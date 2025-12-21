@@ -1,81 +1,35 @@
-* { 
-    margin: 0; 
-    padding: 0; 
-    box-sizing: border-box; 
-}
+/* ... same lahat ng previous CSS mo ... */
 
-body {
-    background: #000;
-    color: #0f0;
-    font-family: 'Orbitron', monospace;
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-}
-
-#terminal {
-    padding: 4vw 5vw;
+/* Start screen */
+#startScreen {
     height: 100vh;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    position: relative;
-}
-
-#logs {
-    flex-grow: 1;
-    overflow-y: auto;
-    margin-bottom: 2vh;
-    font-size: clamp(14px, 4vw, 24px);
-    line-height: 1.8;
-}
-
-.line { 
-    opacity: 0; 
-    animation: fadeIn 0.6s forwards; 
-    margin-bottom: 0.5vh;
-}
-
-@keyframes fadeIn { 
-    to { opacity: 1; } 
-}
-
-#input-line { 
-    font-size: clamp(16px, 4.5vw, 28px); 
-    margin-top: 2vh;
-}
-
-.cursor { 
-    animation: blink 1s infinite; 
-}
-
-@keyframes blink { 
-    50% { opacity: 0; } 
-}
-
-.warning {
-    color: #f00;
-    font-size: clamp(20px, 6vw, 36px);
-    animation: pulse 0.8s infinite;
+    justify-content: center;
+    align-items: center;
     text-align: center;
-    margin: 2vh 0;
+    padding: 20px;
+    color: #0f0;
+    font-size: clamp(20px, 6vw, 36px);
 }
 
-@keyframes pulse { 
-    50% { opacity: 0.6; } 
+#startScreen h1 {
+    margin-bottom: 20px;
+    font-size: clamp(28px, 8vw, 48px);
 }
 
-/* Responsive camera overlay */
-#victimCam {
-    position: fixed;
-    top: 2vh;
-    right: 2vw;
-    width: clamp(100px, 30vw, 250px);
-    height: clamp(80px, 22vw, 180px);
-    border: 3px solid #f00;
-    border-radius: 15px;
-    object-fit: cover;
-    z-index: 9999;
-    display: none;
-    box-shadow: 0 0 20px #f00, 0 0 40px #f00;
+#startScreen p {
+    margin-bottom: 40px;
+    font-size: clamp(16px, 4vw, 24px);
+}
+
+#startBtn {
+    padding: 15px 40px;
+    font-size: clamp(20px, 5vw, 32px);
+    background: #0f0;
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 20px #0f0;
 }
