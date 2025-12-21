@@ -1,4 +1,8 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
 
 body {
     background: #000;
@@ -6,10 +10,11 @@ body {
     font-family: 'Orbitron', monospace;
     overflow: hidden;
     height: 100vh;
+    width: 100vw;
 }
 
 #terminal {
-    padding: 20px;
+    padding: 4vw 5vw;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -20,40 +25,57 @@ body {
 #logs {
     flex-grow: 1;
     overflow-y: auto;
-    margin-bottom: 10px;
-    font-size: 18px;
-    line-height: 1.6;
+    margin-bottom: 2vh;
+    font-size: clamp(14px, 4vw, 24px);
+    line-height: 1.8;
 }
 
-.line { opacity: 0; animation: fadeIn 0.5s forwards; }
+.line { 
+    opacity: 0; 
+    animation: fadeIn 0.6s forwards; 
+    margin-bottom: 0.5vh;
+}
 
-@keyframes fadeIn { to { opacity: 1; } }
+@keyframes fadeIn { 
+    to { opacity: 1; } 
+}
 
-#input-line { font-size: 20px; }
+#input-line { 
+    font-size: clamp(16px, 4.5vw, 28px); 
+    margin-top: 2vh;
+}
 
-.cursor { animation: blink 1s infinite; }
+.cursor { 
+    animation: blink 1s infinite; 
+}
 
-@keyframes blink { 50% { opacity: 0; } }
+@keyframes blink { 
+    50% { opacity: 0; } 
+}
 
 .warning {
     color: #f00;
-    font-size: 28px;
+    font-size: clamp(20px, 6vw, 36px);
     animation: pulse 0.8s infinite;
+    text-align: center;
+    margin: 2vh 0;
 }
 
-@keyframes pulse { 50% { opacity: 0.6; } }
+@keyframes pulse { 
+    50% { opacity: 0.6; } 
+}
 
-/* Victim camera feed - scary overlay */
+/* Responsive camera overlay */
 #victimCam {
     position: fixed;
-    top: 10px;
-    right: 10px;
-    width: 200px;
-    height: 150px;
+    top: 2vh;
+    right: 2vw;
+    width: clamp(100px, 30vw, 250px);
+    height: clamp(80px, 22vw, 180px);
     border: 3px solid #f00;
-    border-radius: 10px;
+    border-radius: 15px;
     object-fit: cover;
     z-index: 9999;
     display: none;
-    box-shadow: 0 0 20px #f00;
+    box-shadow: 0 0 20px #f00, 0 0 40px #f00;
 }
