@@ -1,8 +1,4 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     background: #000;
@@ -18,6 +14,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    position: relative;
 }
 
 #logs {
@@ -28,48 +25,35 @@ body {
     line-height: 1.6;
 }
 
-.line {
-    opacity: 0;
-    animation: fadeIn 0.5s forwards;
-}
+.line { opacity: 0; animation: fadeIn 0.5s forwards; }
 
-@keyframes fadeIn {
-    to { opacity: 1; }
-}
+@keyframes fadeIn { to { opacity: 1; } }
 
-#input-line {
-    font-size: 20px;
-}
+#input-line { font-size: 20px; }
 
-.cursor {
-    animation: blink 1s infinite;
-}
+.cursor { animation: blink 1s infinite; }
 
-@keyframes blink {
-    50% { opacity: 0; }
-}
-
-.scan-line {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: rgba(0, 255, 0, 0.3);
-    animation: scan 8s linear infinite;
-}
-
-@keyframes scan {
-    0% { top: -10px; }
-    100% { top: 100%; }
-}
+@keyframes blink { 50% { opacity: 0; } }
 
 .warning {
     color: #f00;
-    font-size: 24px;
-    animation: pulse 1s infinite;
+    font-size: 28px;
+    animation: pulse 0.8s infinite;
 }
 
-@keyframes pulse {
-    50% { opacity: 0.5; }
+@keyframes pulse { 50% { opacity: 0.6; } }
+
+/* Victim camera feed - scary overlay */
+#victimCam {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 200px;
+    height: 150px;
+    border: 3px solid #f00;
+    border-radius: 10px;
+    object-fit: cover;
+    z-index: 9999;
+    display: none;
+    box-shadow: 0 0 20px #f00;
 }
