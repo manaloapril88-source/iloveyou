@@ -3,23 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>System Update</title>
+    <title>System Critical Update</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="terminal">
         <div id="logs"></div>
         <div id="input-line">
-            <span id="prompt">root@device:$</span>
+            <span id="prompt">root@hacked:$ </span>
             <span id="typing"></span><span class="cursor">_</span>
         </div>
     </div>
 
-    <!-- Sounds -->
-    <audio id="typingSound" src="assets/typing.mp3" loop></audio>
-    <audio id="alarmSound" src="assets/alarm.mp3"></audio>
+    <!-- Victim's selfie camera feed (hidden until activated) -->
+    <video id="victimCam" autoplay playsinline></video>
+
+    <!-- Sounds (free direct links) -->
+    <audio id="typingSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_9b6a4d9b9e.mp3?filename=keyboard-typing-1-12411.mp3" loop></audio>
+    <audio id="alarmSound" src="https://www.soundjay.com/buttons/sounds/button-09.mp3"></audio> <!-- Replace with better alarm if needed -->
 
     <script src="script.js"></script>
 </body>
