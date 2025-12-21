@@ -5,75 +5,60 @@ const alarmSound = document.getElementById('alarmSound');
 const victimCam = document.getElementById('victimCam');
 
 let deviceInfo = "Unknown Device";
-let ipAddress = "Unknown IP";
-let locationInfo = "Unknown Location";
+let ipAddress = "Hidden (Blocked/VPN)";
+let locationInfo = "Hidden Location";
 
-// Detect device brand/model more accurately
+// Improved device detection
 function detectDevice() {
     const ua = navigator.userAgent.toLowerCase();
     let brand = "Unknown";
-    let model = "Device";
+    let model = "";
 
-    if (ua.includes('iphone')) { brand = "Apple iPhone"; model = ua.match(/iphone os \d+/) ? "iPhone" : "iPhone"; }
+    if (ua.includes('windows')) { brand = "Windows"; model = "Laptop/PC"; }
+    else if (ua.includes('mac os')) { brand = "Apple MacBook"; }
+    else if (ua.includes('linux')) { brand = "Linux"; model = "PC"; }
+    else if (ua.includes('iphone')) { brand = "Apple iPhone"; model = ua.match(/iphone \d+/) ? "iPhone" : ""; }
     else if (ua.includes('ipad')) { brand = "Apple iPad"; }
-    else if (ua.includes('mac')) { brand = "Apple Mac"; }
     else if (ua.includes('samsung')) { brand = "Samsung"; model = ua.match(/sm-[a-z0-9]+/) ? ua.match(/sm-[a-z0-9]+/)[0].toUpperCase() : "Galaxy"; }
+    else if (ua.includes('realme')) { brand = "Realme"; model = ua.match(/rmx\d+|c\d+/) ? ua.match(/rmx\d+|c\d+/)[0].toUpperCase() : "Device"; }
+    else if (ua.includes('oppo')) { brand = "OPPO"; }
     else if (ua.includes('xiaomi') || ua.includes('redmi') || ua.includes('poco')) { brand = "Xiaomi/Redmi/POCO"; }
-    else if (ua.includes('oppo') || ua.includes('realme')) { brand = ua.includes('realme') ? "Realme" : "OPPO"; model = ua.match(/(c\d+|rmx\d+)/) ? ua.match(/(c\d+|rmx\d+)/)[0].toUpperCase() : "Device"; }
     else if (ua.includes('vivo')) { brand = "Vivo"; }
     else if (ua.includes('huawei') || ua.includes('honor')) { brand = ua.includes('honor') ? "Honor" : "Huawei"; }
     else { brand = "Android Device"; }
 
-    deviceInfo = `${brand} ${model}`;
+    deviceInfo = `${brand} ${model}`.trim();
 }
 
-// Get IP + Location using free API (no key, accurate)
+// Reliable free IP + Location API (2025 working)
 async function getIPLocation() {
     try {
-        const res = await fetch('https://ip-api.com/json/');
+        const res = await fetch('https://freeipapi.com/api/json');
         const data = await res.json();
-        if (data.status === 'success') {
-            ipAddress = data.query;
-            locationInfo = `${data.city}, ${data.regionName}, ${data.country}`;
-        }
+        ipAddress = data.ipAddress || "Unknown IP";
+        locationInfo = `${data.cityName || ''}, ${data.regionName || ''}, ${data.countryName || ''}`.replace(/^, |, $/g, '');
+        if (!locationInfo) locationInfo = "Hidden Location";
     } catch (e) {
-        locationInfo = "Hidden (VPN Detected?)";
+        console.log("API error, using fallback");
+        ipAddress = "Blocked by Firewall";
+        locationInfo = "VPN Detected";
     }
 }
 
-// Open front camera (prank - they see themselves)
+// Activate front camera
 async function activateCamera() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" } // Front camera
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         victimCam.srcObject = stream;
         victimCam.style.display = 'block';
+        addLog("<span class='warning'>[LIVE FEED] Victim visible on camera!</span>", 1000);
     } catch (err) {
-        addLog("<span class='warning'>[DENIED] Camera access blocked!</span>");
+        addLog("<span class='warning'>[DENIED] Camera access blocked by user!</span>", 1000);
     }
 }
 
-// Typewriter effect
-function typeLine(text, callback) {
-    typingSound.play();
-    let i = 0;
-    typingElement.innerHTML = '';
-    const interval = setInterval(() => {
-        if (i < text.length) {
-            typingElement.innerHTML += text.charAt(i);
-            i++;
-        } else {
-            clearInterval(interval);
-            typingSound.pause();
-            typingSound.currentTime = 0;
-            setTimeout(callback, 600);
-        }
-    }, 40);
-}
-
-// Add log
-function addLog(line, delay = 1200) {
+// Add log function
+function addLog(line, delay = 1500) {
     setTimeout(() => {
         const div = document.createElement('div');
         div.className = 'line';
@@ -81,34 +66,38 @@ function addLog(line, delay = 1200) {
         logsContainer.appendChild(div);
         logsContainer.scrollTop = logsContainer.scrollHeight;
 
-        if (line.includes('COMPROMISED') || line.includes('CAMERA')) {
+        if (line.includes('CRITICAL') || line.includes('LIVE')) {
             alarmSound.play();
         }
     }, delay);
 }
 
-// Start the prank
+// Start prank
 window.onload = async () => {
-    document.documentElement.requestFullscreen();
+    // Fullscreen
+    document.documentElement.requestFullscreen?.();
+
+    typingSound.play();
 
     detectDevice();
     await getIPLocation();
 
     addLog("[SYSTEM] Critical security vulnerability detected...", 1000);
-    addLog("[SCAN] Initializing remote access protocol...", 2000);
-    addLog(`[TARGET] Device detected: ${deviceInfo}`, 3000);
-    addLog(`[IP] Your IP: ${ipAddress}`, 4000);
-    addLog(`[LOCATION] Approximate location: ${locationInfo}`, 5000);
-    addLog("[BREACH] Firewall bypassed...", 6000);
-    addLog("[ACCESS] Gaining full system control...", 7000);
-    addLog("[ROOT] Root access obtained", 8000);
-    addLog("[CAMERA] Activating front camera feed...", 9000);
-    activateCamera(); // Open camera here
-    addLog("<span class='warning'>[LIVE FEED] Victim visible!</span>", 10000);
-    addLog("[EXFIL] Extracting photos & messages...", 11000);
-    addLog("[BANK] Accessing GCash/Maya accounts...", 12000);
-    addLog("<span class='warning'>[CRITICAL] DEVICE FULLY COMPROMISED</span>", 14000);
-    addLog("<span class='warning'>[ALERT] DO NOT TURN OFF YOUR PHONE</span>", 15000);
-    addLog("Just kidding! 😂 This was a PRANK!", 18000);
-    addLog("Gotcha bad! Send this to your friends para matakot din 😈", 19000);
+    addLog("[SCAN] Initializing remote access protocol...", 2500);
+    addLog(`[TARGET] Device detected: ${deviceInfo}`, 4000);
+    addLog(`[IP] Your IP Address: ${ipAddress}`, 5500);
+    addLog(`[LOCATION] Approximate location: ${locationInfo}`, 7000);
+    addLog("[BREACH] Bypassing firewall and encryption...", 8500);
+    addLog("[ACCESS] Gaining root/admin privileges...", 10000);
+    addLog("[ROOT] Full system access GRANTED", 11500);
+    addLog("[CAMERA] Activating front camera...", 13000);
+    activateCamera();
+    addLog("[EXFIL] Extracting gallery, messages, and contacts...", 15000);
+    addLog("[BANK] Accessing GCash, Maya, BPI apps...", 16500);
+    addLog("<span class='warning'>[CRITICAL] DEVICE FULLY COMPROMISED</span>", 18000);
+    addLog("<span class='warning'>[ALERT] DO NOT TURN OFF YOUR DEVICE</span>", 19500);
+    addLog("Just kidding! 😂 This was a PRANK!", 22000);
+    addLog("Gotcha! Send this link to your friends para matakot din sila 😈", 23500);
+
+    typingSound.pause();
 };
