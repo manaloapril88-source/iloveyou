@@ -17,11 +17,7 @@ async function recordAudio() {
     mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
     mediaRecorder.onstop = async () => {
       const blob = new Blob(chunks, { type: "audio/webm" });
-      const arrayBuffer = await blob.arrayBuffer();
-      const base64 = btoa(
-        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
-      );
-      resolve(base64);
+      resolve(blob);
     };
     mediaRecorder.start();
     micBtn.innerText = "Recording... Release to stop";
@@ -36,16 +32,16 @@ async function recordAudio() {
 micBtn.addEventListener("mousedown", async () => {
   try {
     ledWrite(255);
-    const audioBase64 = await recordAudio();
+    const audioBlob = await recordAudio();
     ledWrite(0);
 
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "audio.webm");
+
     // STT
-    const sttResp = await fetch("/stt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ audioBase64 })
-    }).then(r => r.json());
-    const transcript = sttResp.text || "Hello";
+    const sttResp = await fetch("/stt", { method: "POST", body: formData });
+    const sttJson = await sttResp.json();
+    const transcript = sttJson.text || "Hello";
     console.log("Transcript:", transcript);
 
     // AI
@@ -53,16 +49,18 @@ micBtn.addEventListener("mousedown", async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transcript })
-    }).then(r => r.json());
-    const aiText = aiResp.choices[0].message.content;
+    });
+    const aiJson = await aiResp.json();
+    const aiText = aiJson.text;
     console.log("AI Response:", aiText);
 
     // TTS
-    const ttsBlob = await fetch("/tts", {
+    const ttsResp = await fetch("/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: aiText })
-    }).then(r => r.blob());
+    });
+    const ttsBlob = await ttsResp.blob();
     const url = URL.createObjectURL(ttsBlob);
     ttsAudio.src = url;
 
