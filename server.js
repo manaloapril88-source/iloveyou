@@ -1,20 +1,27 @@
 import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 import axios from "axios";
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+const app = express();
 app.use(express.json({ limit: "50mb" }));
 
-/* ================= STT ================= */
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
+
+/* ========== Serve frontend ========== */
+app.use(express.static(__dirname));
+
+/* ========== STT endpoint ========== */
 app.post("/stt", async (req, res) => {
   try {
     const { audioBase64 } = req.body;
-    if (!audioBase64) return res.status(400).json({ error: "no audio" });
+    if (!audioBase64) return res.status(400).json({ error: "No audio provided" });
 
     const resp = await axios.post(
-      "https://api.groq.com/openai/v1/audio/transcriptions",
+      "https://api.groq.com/openai/v1/audio/transcriptions/create",
       {
         file: audioBase64,
         model: "whisper-large-v3-turbo",
@@ -29,13 +36,13 @@ app.post("/stt", async (req, res) => {
     );
 
     res.json({ text: resp.data.text });
-  } catch (e) {
-    console.error(e.response?.data || e.message);
-    res.status(500).json({ error: "stt failed" });
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ error: "STT failed" });
   }
 });
 
-/* ================= AI ================= */
+/* ========== AI endpoint ========== */
 app.post("/ai", async (req, res) => {
   try {
     const { text } = req.body;
@@ -57,13 +64,13 @@ app.post("/ai", async (req, res) => {
     );
 
     res.json({ text: resp.data.choices[0].message.content });
-  } catch (e) {
-    console.error(e.response?.data || e.message);
-    res.status(500).json({ error: "ai failed" });
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ error: "AI failed" });
   }
 });
 
-/* ================= TTS ================= */
+/* ========== TTS endpoint ========== */
 app.post("/tts", async (req, res) => {
   try {
     const { text } = req.body;
@@ -71,9 +78,9 @@ app.post("/tts", async (req, res) => {
     const resp = await axios.post(
       "https://api.groq.com/openai/v1/audio/speech",
       {
-        model: "canopylabs/orpheus-v1-english",
-        voice: "autumn",
         input: text,
+        voice: "autumn",
+        model: "canopylabs/orpheus-v1-english",
         response_format: "wav"
       },
       {
@@ -87,12 +94,14 @@ app.post("/tts", async (req, res) => {
 
     res.setHeader("Content-Type", "audio/wav");
     res.send(resp.data);
-  } catch (e) {
-    console.error(e.response?.data || e.message);
-    res.status(500).json({ error: "tts failed" });
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ error: "TTS failed" });
   }
 });
 
+/* ========== Start server ========== */
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("Server running on", PORT);
+  console.log(`Server running on port ${PORT}`);
 });
