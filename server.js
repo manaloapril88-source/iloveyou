@@ -1,34 +1,36 @@
 import express from "express";
 import path from "path";
-import axios from "axios";
 import fs from "fs";
-import FormData from "form-data";
+import { Groq } from "groq-sdk";
+import multer from "multer";
 
 const app = express();
 const PORT = 3000;
-
-const GROQ_API_KEY = "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";
+const groq = new Groq({ apiKey: "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" });
 
 app.use(express.json({ limit: "50mb" }));
-app.use(express.static(path.join(process.cwd(), ""))); // serve root files
+app.use(express.static(path.join(process.cwd(), "")));
+
+// For file upload
+const upload = multer({ dest: "uploads/" });
 
 // --- STT endpoint ---
-app.post("/stt", async (req, res) => {
+app.post("/stt", upload.single("audio"), async (req, res) => {
   try {
-    const { audioBase64 } = req.body;
-    const response = await axios.post(
-      "https://api.groq.com/v1/audio/transcriptions",
-      {
-        file: audioBase64,
-        model: "whisper-large-v3-turbo",
-        temperature: 0,
-        response_format: "verbose_json"
-      },
-      { headers: { Authorization: "Bearer " + GROQ_API_KEY } }
-    );
-    res.json(response.data);
+    const filePath = req.file.path;
+
+    const transcription = await groq.audio.transcriptions.create({
+      file: fs.createReadStream(filePath),
+      model: "whisper-large-v3-turbo",
+      temperature: 0,
+      response_format: "verbose_json"
+    });
+
+    fs.unlinkSync(filePath); // cleanup uploaded file
+
+    res.json({ text: transcription.text });
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.error(err);
     res.status(500).json({ error: "STT failed" });
   }
 });
@@ -37,19 +39,24 @@ app.post("/stt", async (req, res) => {
 app.post("/ai", async (req, res) => {
   try {
     const { transcript } = req.body;
-    const response = await axios.post(
-      "https://api.groq.com/v1/chat/completions",
-      {
-        model: "groq/compound-mini",
-        messages: [{ role: "user", content: transcript }],
-        temperature: 1,
-        max_completion_tokens: 512
-      },
-      { headers: { Authorization: "Bearer " + GROQ_API_KEY } }
-    );
-    res.json(response.data);
+
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: "user", content: transcript }
+      ],
+      model: "openai/gpt-oss-120b",
+      temperature: 1,
+      max_completion_tokens: 8192,
+      top_p: 1,
+      stream: false,
+      reasoning_effort: "medium",
+    });
+
+    const aiText = chatCompletion.choices[0].message.content;
+
+    res.json({ text: aiText });
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.error(err);
     res.status(500).json({ error: "AI failed" });
   }
 });
@@ -58,27 +65,23 @@ app.post("/ai", async (req, res) => {
 app.post("/tts", async (req, res) => {
   try {
     const { text } = req.body;
-    const response = await axios.post(
-      "https://api.groq.com/v1/audio/speech",
-      {
-        input: text,
-        voice: "autumn",
-        model: "canopylabs/orpheus-v1-english",
-        response_format: "wav"
-      },
-      {
-        headers: { Authorization: "Bearer " + GROQ_API_KEY },
-        responseType: "arraybuffer"
-      }
-    );
+    const wav = await groq.audio.speech.create({
+      model: "canopylabs/orpheus-v1-english",
+      voice: "autumn",
+      response_format: "wav",
+      input: text
+    });
+
+    const buffer = Buffer.from(await wav.arrayBuffer());
     res.set("Content-Type", "audio/wav");
-    res.send(response.data);
+    res.send(buffer);
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.error(err);
     res.status(500).json({ error: "TTS failed" });
   }
 });
 
+// --- Start server ---
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
