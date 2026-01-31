@@ -10,20 +10,45 @@ app.use(cors());
 app.use(express.static("public"));
 app.use(express.json());
 
+// Main Chat Endpoint
 app.post("/ask-alexatron", async (req, res) => {
+    const userMessage = req.body.message;
+
+    // Log para makita mo sa terminal kung pumasok ang text mula sa STT
+    console.log(`\n--- New Command ---`);
+    console.log(`User: ${userMessage}`);
+
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: [
-                { role: "system", content: "You are Alexatron, a smart AI created by April Manalo. Respond in 1-2 English sentences only." },
-                { role: "user", content: req.body.message }
+                { 
+                    role: "system", 
+                    content: `You are Alexatron, a smart voice assistant created by April Manalo. 
+                              Tone: Concise, professional, and friendly. 
+                              Rule: Always respond in English only (max 2 sentences).` 
+                },
+                { role: "user", content: userMessage }
             ],
-            model: "groq/compound",
+            model: "llama-3.3-70b-versatile",
             temperature: 0.6,
         });
-        res.json({ reply: chatCompletion.choices[0]?.message?.content || "Error." });
+
+        const reply = chatCompletion.choices[0]?.message?.content || "System error.";
+        
+        console.log(`Alexatron: ${reply}`);
+        res.json({ reply: reply });
+
     } catch (error) {
-        res.status(500).json({ error: "Offline." });
+        console.error("Groq API Error:", error.message);
+        res.status(500).json({ error: "Alexatron is currently overthinking." });
     }
 });
 
-app.listen(3000, () => console.log("🚀 Alexatron live on port 3000"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`-------------------------------------------`);
+    console.log(`🚀 ALEXATRON SERVER IS RUNNING`);
+    console.log(`🌐 Local Link: http://localhost:${PORT}`);
+    console.log(`🛠️ Developer: April Manalo`);
+    console.log(`-------------------------------------------`);
+});
