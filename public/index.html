@@ -1,171 +1,74 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Groq AI Voice Assistant</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+const recordBtn = document.getElementById('recordBtn');
+const status = document.getElementById('status');
+const body = document.body;
 
-    <style>
-        :root {
-            --bg-color: #0f172a;
-            --accent-color: #3b82f6;
-            --record-color: #ef4444;
-            --process-color: #a855f7;
-            --text-color: #f8fafc;
-        }
+// 1. Google STT Setup (Pakinig)
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+recognition.lang = 'en-US'; // Pwedeng 'fil-PH' kung gusto mo mas accurate sa tagalog, but 'en-US' works too.
+recognition.interimResults = false;
 
-        body {
-            margin: 0;
-            height: 100vh;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            font-family: 'Inter', sans-serif;
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
+// 2. Google TTS Setup (Pananalita)
+const synth = window.speechSynthesis;
 
-        .container { text-align: center; width: 90%; max-width: 500px; }
-        h1 { font-weight: 300; letter-spacing: 2px; margin-bottom: 20px; font-size: 1.2rem; opacity: 0.7; }
+recordBtn.addEventListener('click', () => {
+    if (body.classList.contains('recording')) {
+        recognition.stop();
+    } else {
+        recognition.start();
+    }
+});
 
-        /* Mic Button Styles */
-        .mic-wrapper { position: relative; margin-bottom: 30px; }
-        .glow-ring {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 80px; height: 80px; border-radius: 50%; background: var(--accent-color);
-            opacity: 0; z-index: -1; transition: all 0.3s ease;
-        }
+recognition.onstart = () => {
+    body.className = 'recording';
+    status.textContent = "Alexatron is listening...";
+};
 
-        #recordBtn {
-            width: 80px; height: 80px; border-radius: 50%; border: none;
-            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
-            color: white; font-size: 24px; cursor: pointer; outline: none;
-            transition: all 0.3s ease;
-        }
+recognition.onresult = async (event) => {
+    const transcript = event.results[0][0].transcript;
+    console.log("Narinig ni Alexatron:", transcript);
+    
+    // I-send ang text sa backend para mag-isip si Alexatron
+    getAIResponse(transcript);
+};
 
-        /* Transcription Display */
-        #chat-log {
-            background: rgba(0, 0, 0, 0.2); border-radius: 15px; padding: 15px;
-            margin-top: 20px; min-height: 50px; font-size: 0.9rem; line-height: 1.4;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .user-text { color: #94a3b8; font-style: italic; margin-bottom: 5px; }
-        .ai-text { color: var(--accent-color); font-weight: 600; }
+async function getAIResponse(text) {
+    body.className = 'processing';
+    status.textContent = "Alexatron is thinking...";
 
-        /* Animation States */
-        body.recording .glow-ring { background: var(--record-color); opacity: 0.5; animation: pulse 1.2s infinite; }
-        body.processing #recordBtn { animation: spin 1s infinite linear; color: var(--process-color); }
-        body.speaking .glow-ring { background: var(--accent-color); opacity: 0.6; animation: pulse 0.8s infinite; }
-
-        @keyframes pulse {
-            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
-            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
-        }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        
-        #status { margin-top: 15px; font-size: 0.8rem; color: #64748b; text-transform: uppercase; }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <h1>GROQ VOICE AI</h1>
-
-        <div class="mic-wrapper">
-            <div class="glow-ring"></div>
-            <button id="recordBtn"><i class="fas fa-microphone"></i></button>
-        </div>
-
-        <div id="status">Tap to start</div>
-
-        <div id="chat-log">
-            <div id="user-display" class="user-text">...</div>
-            <div id="ai-display" class="ai-text">Waiting for voice input...</div>
-        </div>
-    </div>
-
-    <script>
-        const recordBtn = document.getElementById('recordBtn');
-        const status = document.getElementById('status');
-        const userDisp = document.getElementById('user-display');
-        const aiDisp = document.getElementById('ai-display');
-        const icon = recordBtn.querySelector('i');
-        
-        let mediaRecorder;
-        let audioChunks = [];
-        let isRecording = false;
-
-        recordBtn.addEventListener('click', () => {
-            if (!isRecording) startRecording();
-            else stopRecording();
+    try {
+        const response = await fetch('/ask-alexatron', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
         });
 
-        async function startRecording() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
+        const data = await response.json();
+        speak(data.reply);
+    } catch (err) {
+        console.error("Error:", err);
+        resetUI();
+    }
+}
 
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(audioChunks, { type: 'audio/wav' });
-                    processVoice(blob);
-                };
+function speak(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US'; // English voice
+    utterance.rate = 1.0;     // Bilis ng pagsasalita
+    
+    utterance.onstart = () => {
+        body.className = 'speaking';
+        status.textContent = "Alexatron is speaking...";
+    };
 
-                mediaRecorder.start();
-                isRecording = true;
-                document.body.className = 'recording';
-                icon.className = 'fas fa-stop';
-                status.textContent = "Listening...";
-            } catch (err) {
-                alert("Please enable microphone access.");
-            }
-        }
+    utterance.onend = () => {
+        resetUI();
+    };
 
-        function stopRecording() {
-            mediaRecorder.stop();
-            isRecording = false;
-            document.body.className = 'processing';
-            icon.className = 'fas fa-circle-notch';
-            status.textContent = "Processing...";
-            recordBtn.disabled = true;
-        }
+    synth.speak(utterance);
+}
 
-        async function processVoice(blob) {
-            const formData = new FormData();
-            formData.append('audio', blob);
-
-            try {
-                const res = await fetch('/talk', { method: 'POST', body: formData });
-                if (!res.ok) throw new Error("API Error");
-
-                // Play Audio Response
-                const audioBlob = await res.blob();
-                const audio = new Audio(URL.createObjectURL(audioBlob));
-                
-                document.body.className = 'speaking';
-                icon.className = 'fas fa-volume-up';
-                status.textContent = "AI is speaking";
-
-                audio.play();
-                audio.onended = resetUI;
-
-            } catch (err) {
-                console.error(err);
-                status.textContent = "Error occurred.";
-                resetUI();
-            }
-        }
-
-        function resetUI() {
-            document.body.className = '';
-            icon.className = 'fas fa-microphone';
-            status.textContent = "Tap to start";
-            recordBtn.disabled = false;
-        }
-    </script>
-</body>
-</html>
+function resetUI() {
+    body.className = '';
+    status.textContent = "Tap to talk to Alexatron";
+}
