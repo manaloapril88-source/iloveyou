@@ -12,20 +12,19 @@ app.use(express.json());
 
 app.post("/ask-alexatron", async (req, res) => {
     const userMessage = req.body.message;
-    console.log(`[USER]: ${userMessage}`);
 
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: [
                 { 
                     role: "system", 
-                    content: `You are Alexatron, a smart assistant by April Manalo. 
-                              You must ALWAYS respond in JSON format.
-                              Structure: {"language": "en" or "tl", "response": "text"}
+                    content: `You are Alexatron, a smart assistant by April Manalo.
+                              You must ALWAYS respond in a valid JSON object format only.
+                              Structure: {"language": "en" or "tl", "response": "your message"}
                               Rules:
-                              - If user speaks Tagalog/Taglish, use "tl" and respond in Tagalog.
+                              - If user speaks Tagalog or Taglish, use "tl" and respond in Tagalog.
                               - If user speaks English, use "en" and respond in English.
-                              - Keep response to 1-2 short sentences only.` 
+                              - Keep response short (1-2 sentences).`
                 },
                 { role: "user", content: userMessage }
             ],
@@ -39,12 +38,12 @@ app.post("/ask-alexatron", async (req, res) => {
         res.json(aiData);
 
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Server Error:", error);
         res.status(500).json({ language: "en", response: "System error, please try again." });
     }
 });
 
 const PORT = 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Alexatron Server Online at http://localhost:${PORT}`);
+    console.log(`🚀 Alexatron Server: http://localhost:${PORT}`);
 });
