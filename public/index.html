@@ -6,28 +6,27 @@
     <title>Alexatron AI</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        h1 { letter-spacing: 5px; color: #3b82f6; }
-        #recordBtn { width: 120px; height: 120px; border-radius: 50%; border: none; background: #1e293b; color: #3b82f6; font-size: 2.5rem; cursor: pointer; transition: 0.4s; }
+        body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        #recordBtn { width: 130px; height: 130px; border-radius: 50%; border: none; background: #1e293b; color: #3b82f6; font-size: 3rem; cursor: pointer; transition: 0.4s; z-index: 10; }
         
-        /* Animation States */
-        .listening-wake #recordBtn { color: #10b981; border: 2px solid #10b981; } 
+        /* Status Colors */
+        .listening-wake #recordBtn { color: #10b981; border: 3px solid #10b981; } 
         .recording #recordBtn { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
         .processing #recordBtn { color: #f59e0b; animation: spin 2s infinite linear; }
-        .speaking #recordBtn { background: #3b82f6; color: white; box-shadow: 0 0 30px #3b82f6; }
+        .speaking #recordBtn { background: #3b82f6; color: white; box-shadow: 0 0 40px #3b82f6; }
 
-        #status { margin-top: 30px; color: #94a3b8; text-align: center; }
-        #preview { margin-top: 15px; font-style: italic; color: #64748b; font-size: 0.9rem; height: 1.2rem; }
-        
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        #status { margin-top: 30px; font-size: 1.2rem; color: #94a3b8; text-align: center; max-width: 80%; }
+        #preview { margin-top: 15px; font-style: italic; color: #475569; height: 1.5rem; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="listening-wake">
 
-    <h1>ALEXATRON</h1>
+    <h1 style="letter-spacing: 8px; color: #3b82f6;">ALEXATRON</h1>
     <button id="recordBtn"><i class="fas fa-microphone"></i></button>
-    <div id="status">Click mic once, then say "Computer" or "AI"</div>
+    <div id="status">Say "Computer" or "AI"</div>
     <div id="preview"></div>
 
     <script>
@@ -48,6 +47,7 @@
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
+        // Auto-start
         window.onload = () => { try { recognition.start(); } catch(e) {} };
 
         recognition.onresult = (event) => {
@@ -63,11 +63,11 @@
             preview.textContent = interim || final;
 
             if (!isActive) {
-                // Wake word logic
+                // Wake Word Detection
                 const heard = (interim + " " + final).split(" ");
                 if (WAKE_WORDS.some(w => heard.includes(w))) triggerCommand();
             } else {
-                // Silence timer logic (Anti-aggressive)
+                // Smart Silence Timer
                 clearTimeout(silenceTimer);
                 if (interim || final) {
                     silenceTimer = setTimeout(() => {
@@ -76,7 +76,7 @@
                             recognition.stop();
                             sendToAI(cmd);
                         }
-                    }, 1500); // 1.5s silence before sending
+                    }, 1500); 
                 }
             }
         };
@@ -87,7 +87,12 @@
             status.textContent = "Listening...";
             clearTimeout(silenceTimer);
 
-            // Beep
+            if (!isUnlocked) {
+                synth.speak(new SpeechSynthesisUtterance("")); // Unlock TTS
+                isUnlocked = true;
+            }
+
+            // Beep Sound
             const ctx = new AudioContext();
             const osc = ctx.createOscillator();
             osc.connect(ctx.destination);
@@ -96,7 +101,12 @@
 
         async function sendToAI(text) {
             body.className = 'processing';
-            status.textContent = "Thinking...";
+            status.textContent = "Alexatron is thinking...";
+            
+            const safetyTimeout = setTimeout(() => {
+                if (body.className === 'processing') reset();
+            }, 8000); // 8s safety reset
+
             try {
                 const res = await fetch('/ask-alexatron', {
                     method: 'POST',
@@ -104,20 +114,35 @@
                     body: JSON.stringify({ message: text })
                 });
                 const data = await res.json();
-                speak(data.reply);
-            } catch (err) { reset(); }
+                clearTimeout(safetyTimeout);
+                if (data.reply) speak(data.reply);
+                else reset();
+            } catch (err) { 
+                clearTimeout(safetyTimeout);
+                reset(); 
+            }
         }
 
         function speak(text) {
             synth.cancel();
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'en-US';
+            
             const voices = synth.getVoices();
             utter.voice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Female"));
 
-            utter.onstart = () => { body.className = 'speaking'; status.textContent = text; };
-            utter.onend = () => { reset(); };
+            utter.onstart = () => {
+                body.className = 'speaking';
+                status.textContent = text;
+            };
+
+            utter.onend = () => reset();
+            utter.onerror = () => reset();
+
             synth.speak(utter);
+
+            // Speaking Timeout
+            setTimeout(() => { if(body.className === 'speaking') reset(); }, 12000);
         }
 
         function reset() {
@@ -131,10 +156,7 @@
         recognition.onend = () => { if (!isActive) try { recognition.start(); } catch(e) {} };
 
         recordBtn.addEventListener('click', () => {
-            if(!isUnlocked) {
-                synth.speak(new SpeechSynthesisUtterance("Online"));
-                isUnlocked = true;
-            }
+            isUnlocked = true;
             triggerCommand();
         });
     </script>
