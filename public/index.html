@@ -3,71 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alexatron AI</title>
+    <title>Alexatron AI - Voice Selector</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        #recordBtn { width: 130px; height: 130px; border-radius: 50%; border: none; background: #1e293b; color: #3b82f6; font-size: 3rem; cursor: pointer; transition: 0.4s; z-index: 10; }
+        body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .container { text-align: center; background: #1e293b; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { letter-spacing: 5px; color: #3b82f6; margin-bottom: 20px; }
         
-        /* Status Colors */
-        .listening-wake #recordBtn { color: #10b981; border: 3px solid #10b981; } 
+        #recordBtn { width: 100px; height: 100px; border-radius: 50%; border: none; background: #334155; color: #3b82f6; font-size: 2.5rem; cursor: pointer; transition: 0.4s; margin-bottom: 20px; }
+        
+        /* Voice Selector Style */
+        .voice-settings { margin-top: 20px; text-align: left; }
+        select { background: #0f172a; color: #94a3b8; border: 1px solid #334155; padding: 10px; border-radius: 8px; width: 100%; max-width: 300px; cursor: pointer; }
+        label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 5px; margin-left: 5px; }
+
+        /* States */
+        .listening-wake #recordBtn { color: #10b981; border: 2px solid #10b981; }
         .recording #recordBtn { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
         .processing #recordBtn { color: #f59e0b; animation: spin 2s infinite linear; }
-        .speaking #recordBtn { background: #3b82f6; color: white; box-shadow: 0 0 40px #3b82f6; }
+        .speaking #recordBtn { background: #3b82f6; color: white; box-shadow: 0 0 30px #3b82f6; }
 
-        #status { margin-top: 30px; font-size: 1.2rem; color: #94a3b8; text-align: center; max-width: 80%; }
-        #preview { margin-top: 15px; font-style: italic; color: #475569; height: 1.5rem; }
-
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+        #status { margin-top: 20px; font-size: 1rem; color: #94a3b8; height: 1.5rem; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="listening-wake">
 
-    <h1 style="letter-spacing: 8px; color: #3b82f6;">ALEXATRON</h1>
-    <button id="recordBtn"><i class="fas fa-microphone"></i></button>
-    <div id="status">Say "Computer" or "AI"</div>
-    <div id="preview"></div>
+    <div class="container">
+        <h1>ALEXATRON</h1>
+        
+        <button id="recordBtn"><i class="fas fa-microphone"></i></button>
+        
+        <div id="status">Say "Computer" or "AI"</div>
+
+        <div class="voice-settings">
+            <label for="voiceSelect">Select AI Voice:</label>
+            <select id="voiceSelect"><option>Loading voices...</option></select>
+        </div>
+    </div>
 
     <script>
         const recordBtn = document.getElementById('recordBtn');
         const status = document.getElementById('status');
-        const preview = document.getElementById('preview');
+        const voiceSelect = document.getElementById('voiceSelect');
         const body = document.body;
         
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
         const synth = window.speechSynthesis;
 
+        let voices = [];
         const WAKE_WORDS = ["computer", "ai"];
         let isActive = false;
         let isUnlocked = false;
         let silenceTimer;
 
+        // --- VOICE SELECTOR LOGIC ---
+        function populateVoiceList() {
+            voices = synth.getVoices();
+            voiceSelect.innerHTML = '';
+            
+            voices.forEach((voice, i) => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.setAttribute('data-lang', voice.lang);
+                option.setAttribute('data-name', voice.name);
+                
+                // I-set ang default sa English US kung meron
+                if(voice.name.includes("Google US English") || voice.name.includes("Zira")) {
+                    option.selected = true;
+                }
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        // Kailangan ito dahil async naglo-load ang voices
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
-        // Auto-start
-        window.onload = () => { try { recognition.start(); } catch(e) {} };
+        window.onload = () => { 
+            populateVoiceList();
+            try { recognition.start(); } catch(e) {} 
+        };
 
         recognition.onresult = (event) => {
             let interim = '';
             let final = '';
-
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 let text = event.results[i][0].transcript.toLowerCase().trim();
                 if (event.results[i].isFinal) final += text;
                 else interim += text;
             }
 
-            preview.textContent = interim || final;
-
             if (!isActive) {
-                // Wake Word Detection
                 const heard = (interim + " " + final).split(" ");
                 if (WAKE_WORDS.some(w => heard.includes(w))) triggerCommand();
             } else {
-                // Smart Silence Timer
                 clearTimeout(silenceTimer);
                 if (interim || final) {
                     silenceTimer = setTimeout(() => {
@@ -76,7 +112,7 @@
                             recognition.stop();
                             sendToAI(cmd);
                         }
-                    }, 1500); 
+                    }, 1500);
                 }
             }
         };
@@ -85,28 +121,17 @@
             isActive = true;
             body.className = 'recording';
             status.textContent = "Listening...";
-            clearTimeout(silenceTimer);
-
             if (!isUnlocked) {
-                synth.speak(new SpeechSynthesisUtterance("")); // Unlock TTS
                 isUnlocked = true;
+                // Silent start to unlock audio
+                const u = new SpeechSynthesisUtterance("");
+                synth.speak(u);
             }
-
-            // Beep Sound
-            const ctx = new AudioContext();
-            const osc = ctx.createOscillator();
-            osc.connect(ctx.destination);
-            osc.start(); osc.stop(ctx.currentTime + 0.1);
         }
 
         async function sendToAI(text) {
             body.className = 'processing';
-            status.textContent = "Alexatron is thinking...";
-            
-            const safetyTimeout = setTimeout(() => {
-                if (body.className === 'processing') reset();
-            }, 8000); // 8s safety reset
-
+            status.textContent = "Thinking...";
             try {
                 const res = await fetch('/ask-alexatron', {
                     method: 'POST',
@@ -114,46 +139,30 @@
                     body: JSON.stringify({ message: text })
                 });
                 const data = await res.json();
-                clearTimeout(safetyTimeout);
-                if (data.reply) speak(data.reply);
-                else reset();
-            } catch (err) { 
-                clearTimeout(safetyTimeout);
-                reset(); 
-            }
+                speak(data.reply);
+            } catch (err) { reset(); }
         }
 
         function speak(text) {
             synth.cancel();
             const utter = new SpeechSynthesisUtterance(text);
-            utter.lang = 'en-US';
             
-            const voices = synth.getVoices();
-            utter.voice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Female"));
-
-            utter.onstart = () => {
-                body.className = 'speaking';
-                status.textContent = text;
-            };
-
+            // GAMITIN ANG PINILING BOSES MULA SA DROPDOWN
+            const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
+            utter.voice = voices.find(v => v.name === selectedOption);
+            
+            utter.onstart = () => { body.className = 'speaking'; status.textContent = text; };
             utter.onend = () => reset();
             utter.onerror = () => reset();
-
             synth.speak(utter);
-
-            // Speaking Timeout
-            setTimeout(() => { if(body.className === 'speaking') reset(); }, 12000);
         }
 
         function reset() {
             isActive = false;
             body.className = 'listening-wake';
             status.textContent = 'Say "Computer" or "AI"';
-            preview.textContent = "";
             try { recognition.start(); } catch(e) {}
         }
-
-        recognition.onend = () => { if (!isActive) try { recognition.start(); } catch(e) {} };
 
         recordBtn.addEventListener('click', () => {
             isUnlocked = true;
