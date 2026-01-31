@@ -12,46 +12,39 @@ app.use(express.json());
 
 app.post("/ask-alexatron", async (req, res) => {
     const userMessage = req.body.message;
-
-    // Log para mamonitor mo ang conversation sa terminal
-    console.log(`\n[USER]: ${userMessage}`);
+    console.log(`[USER]: ${userMessage}`);
 
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: [
                 { 
                     role: "system", 
-                    content: `You are Alexatron, a smart voice assistant created by April Manalo. 
-                              Tone: Concise, helpful, and friendly. 
-                              Rule: Respond in English only. Keep it very short (max 2 sentences) for voice clarity.` 
+                    content: `You are Alexatron, a smart assistant by April Manalo. 
+                              You must ALWAYS respond in JSON format.
+                              Structure: {"language": "en" or "tl", "response": "text"}
+                              Rules:
+                              - If user speaks Tagalog/Taglish, use "tl" and respond in Tagalog.
+                              - If user speaks English, use "en" and respond in English.
+                              - Keep response to 1-2 short sentences only.` 
                 },
                 { role: "user", content: userMessage }
             ],
             model: "llama-3.3-70b-versatile",
+            response_format: { type: "json_object" },
             temperature: 0.6,
-            max_tokens: 150, // Limit para mabilis ang response
         });
 
-        const reply = chatCompletion.choices[0]?.message?.content || "I'm sorry, I couldn't process that.";
-        
-        console.log(`[ALEXATRON]: ${reply}`);
-        res.json({ reply: reply });
+        const aiData = JSON.parse(chatCompletion.choices[0]?.message?.content);
+        console.log(`[ALEXATRON]:`, aiData);
+        res.json(aiData);
 
     } catch (error) {
-        console.error("GROQ API ERROR:", error.message);
-        
-        // Mag-send ng friendly error sa UI para hindi ma-stuck si Alexatron
-        res.status(500).json({ 
-            reply: "I am having trouble connecting to my brain. Please check your internet or API key." 
-        });
+        console.error("Error:", error);
+        res.status(500).json({ language: "en", response: "System error, please try again." });
     }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 app.listen(PORT, () => {
-    console.log(`-------------------------------------------`);
-    console.log(`🚀 ALEXATRON SERVER IS READY`);
-    console.log(`📍 URL: http://localhost:${PORT}`);
-    console.log(`🛡️ Status: Stable & Monitoring`);
-    console.log(`-------------------------------------------`);
+    console.log(`🚀 Alexatron Server Online at http://localhost:${PORT}`);
 });
