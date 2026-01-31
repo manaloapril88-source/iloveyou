@@ -16,9 +16,9 @@ app.post("/ask-alexatron", async (req, res) => {
             messages: [
                 { 
                     role: "system", 
-                    content: `You are Alexatron by April Manalo. 
-                              Respond in Taglish (Tagalog-English mix). 
-                              Be helpful and concise (max 2 sentences).` 
+                    content: `You are Alexatron, a smart assistant created by April Manalo. 
+                              Rule: Respond in English ONLY. 
+                              Be professional, witty, and concise (max 2 sentences).` 
                 },
                 { role: "user", content: req.body.message }
             ],
@@ -26,11 +26,11 @@ app.post("/ask-alexatron", async (req, res) => {
             temperature: 0.6,
         });
 
-        const reply = chatCompletion.choices[0]?.message?.content || "Pasensya na, nag-error ako.";
+        const reply = chatCompletion.choices[0]?.message?.content || "I encountered an error.";
         res.json({ response: reply });
     } catch (error) {
-        res.status(500).json({ response: "System error po." });
+        res.status(500).json({ response: "Server error. Please check your API key." });
     }
 });
 
-app.listen(3000, () => console.log(`🚀 Server on http://localhost:3000`));
+app.listen(3000, () => console.log(`🚀 Alexatron Server: http://localhost:3000`));
