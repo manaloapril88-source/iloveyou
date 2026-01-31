@@ -23,11 +23,11 @@ app.post("/ask-alexatron", async (req, res) => {
                               1. You can understand both Tagalog and English.
                               2. ALWAYS respond in English only. 
                               3. Keep your answers concise, natural, and friendly. 
-                              4. Acknowledge that you can hear the user clearly.` 
+                              4. You can hear because we use stt to convert speech to text but don't repeat the words that you can hear the user if not needed.` 
                 },
                 { role: "user", content: userMessage }
             ],
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-120b",
             temperature: 0.6,
         });
 
