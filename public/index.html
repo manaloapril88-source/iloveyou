@@ -3,22 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alexatron AI - Pro Fixed</title>
+    <title>Alexatron AI - JSON Voice System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .container { text-align: center; background: #1e293b; padding: 2.5rem; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); width: 90%; max-width: 400px; border: 1px solid #334155; }
-        h1 { letter-spacing: 5px; color: #3b82f6; margin: 0 0 20px 0; font-size: 2rem; }
+        h1 { letter-spacing: 5px; color: #3b82f6; margin: 0 0 20px 0; }
         #recordBtn { width: 110px; height: 110px; border-radius: 50%; border: 3px solid #334155; background: #1e293b; color: #3b82f6; font-size: 2.5rem; cursor: pointer; transition: 0.4s; margin-bottom: 20px; outline: none; }
-        .voice-settings { margin-top: 25px; text-align: left; }
-        select { background: #0f172a; color: #f8fafc; border: 1px solid #3b82f6; padding: 12px; border-radius: 10px; width: 100%; cursor: pointer; font-size: 0.9rem; }
-        label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         #status { font-size: 1rem; color: #10b981; min-height: 1.5rem; margin-bottom: 10px; font-weight: 500; }
-        #preview { font-size: 0.85rem; color: #64748b; font-style: italic; min-height: 1.2rem; }
+        #preview { font-size: 0.85rem; color: #64748b; font-style: italic; min-height: 1.2rem; max-width: 100%; word-wrap: break-word; }
+        
         .listening-wake #recordBtn { border-color: #10b981; color: #10b981; }
         .recording #recordBtn { background: #ef4444; color: white; border-color: #ef4444; animation: pulse 1.5s infinite; }
         .processing #recordBtn { color: #f59e0b; border-color: #f59e0b; animation: spin 2s infinite linear; }
         .speaking #recordBtn { background: #3b82f6; color: white; border-color: #3b82f6; box-shadow: 0 0 30px #3b82f6; }
+
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
@@ -28,19 +27,14 @@
     <div class="container">
         <h1>ALEXATRON</h1>
         <button id="recordBtn"><i class="fas fa-microphone"></i></button>
-        <div id="status">Waiting for Mic...</div>
-        <div id="preview">Ready to listen</div>
-        <div class="voice-settings">
-            <label>AI Voice Persona</label>
-            <select id="voiceSelect"><option>Detecting voices...</option></select>
-        </div>
+        <div id="status">Click Mic to Start</div>
+        <div id="preview">Ready...</div>
     </div>
 
     <script>
         const recordBtn = document.getElementById('recordBtn');
         const status = document.getElementById('status');
         const preview = document.getElementById('preview');
-        const voiceSelect = document.getElementById('voiceSelect');
         const body = document.body;
         
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -48,37 +42,18 @@
 
         let voices = [];
         let isActive = false;
-        let isProcessing = false; // Flag para hindi makinig habang sumasagot
+        let isProcessing = false;
         let silenceTimer;
         const WAKE_WORDS = ["computer", "ai"];
 
-        function loadVoices() {
-            voices = synth.getVoices();
-            voiceSelect.innerHTML = '';
-            voices.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = v.name;
-                opt.textContent = `${v.name} (${v.lang})`;
-                if(v.name.includes("Google US English") || v.name.includes("Natural")) opt.selected = true;
-                voiceSelect.appendChild(opt);
-            });
-        }
-
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = loadVoices;
-        }
+        function loadVoices() { voices = synth.getVoices(); }
+        if (speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = loadVoices; }
 
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
-        recognition.onstart = () => {
-            status.textContent = 'Say "Computer" or "AI"';
-            status.style.color = "#10b981";
-        };
-
         recognition.onresult = (event) => {
-            // HAGARAN: Kung nagsasalita ang AI, huwag i-process ang mic
             if (synth.speaking || isProcessing) return;
 
             let interim = '';
@@ -97,10 +72,11 @@
             } else {
                 clearTimeout(silenceTimer);
                 if (interim || final) {
-                    // FIX: Ginawa nating 2.5 seconds ang delay para hindi ka maputol agad
+                    // FIX: 2.5s delay para hindi ka maputol agad
                     silenceTimer = setTimeout(() => {
                         const cmd = interim || final;
                         if (cmd.length > 2) {
+                            recognition.stop();
                             sendToAI(cmd);
                         }
                     }, 2500); 
@@ -112,10 +88,9 @@
             isActive = true;
             isProcessing = false;
             body.className = 'recording';
-            status.textContent = "I'm listening...";
+            status.textContent = "Listening...";
             status.style.color = "#ef4444";
             
-            // Beep Sound
             const ctx = new AudioContext();
             const osc = ctx.createOscillator();
             osc.connect(ctx.destination);
@@ -123,8 +98,7 @@
         }
 
         async function sendToAI(text) {
-            isActive = false;
-            isProcessing = true; // Block incoming mic signals
+            isProcessing = true;
             body.className = 'processing';
             status.textContent = "Thinking...";
             status.style.color = "#f59e0b";
@@ -136,34 +110,32 @@
                     body: JSON.stringify({ message: text })
                 });
                 const data = await res.json();
-                speak(data.reply);
+                speak(data.response, data.language);
             } catch (err) { reset(); }
         }
 
-        function speak(text) {
+        function speak(text, lang) {
             synth.cancel();
-            // Patigilin ang recognition habang nagsasalita para walang loop
             try { recognition.stop(); } catch(e){}
 
             const utter = new SpeechSynthesisUtterance(text);
-            utter.voice = voices.find(v => v.name === voiceSelect.value);
             
+            // AI-Driven Voice Selection
+            let selectedVoice;
+            if (lang === "tl") {
+                selectedVoice = voices.find(v => v.lang.includes("fil") || v.lang.includes("tl") || v.name.includes("Philippines"));
+            } else {
+                selectedVoice = voices.find(v => v.lang.includes("en-US") || v.name.includes("Google US English"));
+            }
+
+            utter.voice = selectedVoice || voices[0];
             utter.onstart = () => { 
                 body.className = 'speaking'; 
-                status.textContent = "Alexatron speaking..."; 
+                status.textContent = text; 
                 status.style.color = "#3b82f6";
             };
-
-            utter.onend = () => {
-                isProcessing = false; // Allow mic again
-                reset();
-            };
-
-            utter.onerror = () => {
-                isProcessing = false;
-                reset();
-            };
-
+            utter.onend = () => { isProcessing = false; reset(); };
+            utter.onerror = () => { isProcessing = false; reset(); };
             synth.speak(utter);
         }
 
@@ -173,27 +145,19 @@
             body.className = 'listening-wake';
             status.textContent = 'Say "Computer" or "AI"';
             status.style.color = "#10b981";
-            preview.textContent = "Ready to listen";
-            // Restart recognition after AI is done speaking
+            preview.textContent = "System Ready";
             try { recognition.start(); } catch(e) {}
         }
 
-        recordBtn.onclick = () => {
-            loadVoices();
-            triggerCommand();
+        recordBtn.onclick = () => { 
+            synth.speak(new SpeechSynthesisUtterance("System Initialized"));
+            reset(); 
         };
+        
+        recognition.onstart = () => { status.textContent = 'Say "Computer" or "AI"'; };
+        recognition.onend = () => { if(!isActive && !isProcessing && !synth.speaking) try { recognition.start(); } catch(e){} };
 
-        recognition.onend = () => { 
-            // Restart mic only if AI is NOT speaking and NOT processing
-            if(!isActive && !isProcessing && !synth.speaking) {
-                try { recognition.start(); } catch(e){} 
-            }
-        };
-
-        window.onload = () => {
-            loadVoices();
-            try { recognition.start(); } catch(e) {}
-        };
+        window.onload = () => { loadVoices(); };
     </script>
 </body>
 </html>
