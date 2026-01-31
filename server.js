@@ -11,39 +11,26 @@ app.use(express.static("public"));
 app.use(express.json());
 
 app.post("/ask-alexatron", async (req, res) => {
-    const userMessage = req.body.message;
-
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: [
                 { 
                     role: "system", 
-                    content: `You are Alexatron, a smart assistant by April Manalo.
-                              You must ALWAYS respond in a valid JSON object format only.
-                              Structure: {"language": "en" or "tl", "response": "your message"}
-                              Rules:
-                              - If user speaks Tagalog or Taglish, use "tl" and respond in Tagalog.
-                              - If user speaks English, use "en" and respond in English.
-                              - Keep response short (1-2 sentences).`
+                    content: `You are Alexatron by April Manalo. 
+                              Respond in Taglish (Tagalog-English mix). 
+                              Be helpful and concise (max 2 sentences).` 
                 },
-                { role: "user", content: userMessage }
+                { role: "user", content: req.body.message }
             ],
             model: "llama-3.3-70b-versatile",
-            response_format: { type: "json_object" },
             temperature: 0.6,
         });
 
-        const aiData = JSON.parse(chatCompletion.choices[0]?.message?.content);
-        console.log(`[ALEXATRON]:`, aiData);
-        res.json(aiData);
-
+        const reply = chatCompletion.choices[0]?.message?.content || "Pasensya na, nag-error ako.";
+        res.json({ response: reply });
     } catch (error) {
-        console.error("Server Error:", error);
-        res.status(500).json({ language: "en", response: "System error, please try again." });
+        res.status(500).json({ response: "System error po." });
     }
 });
 
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Alexatron Server: http://localhost:${PORT}`);
-});
+app.listen(3000, () => console.log(`🚀 Server on http://localhost:3000`));
