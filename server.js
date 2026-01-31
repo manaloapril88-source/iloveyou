@@ -20,31 +20,30 @@ app.post("/ask-alexatron", async (req, res) => {
             messages: [
                 { 
                     role: "system", 
-                    content: `You are Alexatron, a smart AI voice assistant.
-                              IDENTITY: Created by April Manalo.
-                              RULES:
+                    content: `You are Alexatron, a smart and helpful AI assistant created by April Manalo. 
+                              Rules:
                               1. Understand Tagalog and English.
-                              2. ALWAYS respond in ENGLISH only.
-                              3. Keep answers very short (1-2 sentences) for fast voice interaction.
-                              4. Do not acknowledge the STT process, just answer the user directly.` 
+                              2. ALWAYS respond in English only. 
+                              3. Keep answers very concise (1-2 sentences).
+                              4. Be professional yet friendly.` 
                 },
                 { role: "user", content: userMessage }
             ],
-            model: "llama-3.3-70b-versatile",
+            model: "llama-3.3-70b-versatile", 
             temperature: 0.6,
         });
 
-        const reply = chatCompletion.choices[0]?.message?.content || "I encountered an error.";
+        const reply = chatCompletion.choices[0]?.message?.content || "I am sorry, I couldn't process that.";
         console.log("Alexatron Output:", reply);
         res.json({ reply: reply });
 
     } catch (error) {
         console.error("Server Error:", error);
-        res.status(500).json({ error: "System brain offline." });
+        res.status(500).json({ error: "Brain offline." });
     }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Alexatron Online | Dev: April Manalo | Port: ${PORT}`);
+    console.log(`🚀 Alexatron Running: http://localhost:${PORT}`);
 });
