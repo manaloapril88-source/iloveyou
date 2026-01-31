@@ -10,9 +10,9 @@
     <style>
         :root {
             --bg-color: #0f172a;
-            --accent-color: #3b82f6; /* Blue */
-            --record-color: #ef4444; /* Red */
-            --process-color: #a855f7; /* Purple */
+            --accent-color: #3b82f6;
+            --record-color: #ef4444;
+            --process-color: #a855f7;
             --text-color: #f8fafc;
         }
 
@@ -26,159 +26,81 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
         }
 
-        /* Main Container */
-        .container {
-            text-align: center;
-            position: relative;
-            z-index: 10;
-        }
+        .container { text-align: center; width: 90%; max-width: 500px; }
+        h1 { font-weight: 300; letter-spacing: 2px; margin-bottom: 20px; font-size: 1.2rem; opacity: 0.7; }
 
-        h1 {
-            font-weight: 300;
-            letter-spacing: 2px;
-            margin-bottom: 40px;
-            font-size: 1.5rem;
-            text-transform: uppercase;
-            opacity: 0.8;
-        }
-
-        /* The Mic Button Wrapper */
-        .mic-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-
-        /* The Glowing Ring (Visualizer Effect) */
+        /* Mic Button Styles */
+        .mic-wrapper { position: relative; margin-bottom: 30px; }
         .glow-ring {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: var(--accent-color);
-            opacity: 0;
-            z-index: -1;
-            transition: all 0.3s ease;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80px; height: 80px; border-radius: 50%; background: var(--accent-color);
+            opacity: 0; z-index: -1; transition: all 0.3s ease;
         }
 
-        /* The Main Button */
         #recordBtn {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: none;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            outline: none;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            width: 80px; height: 80px; border-radius: 50%; border: none;
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+            color: white; font-size: 24px; cursor: pointer; outline: none;
             transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        #recordBtn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.05);
+        /* Transcription Display */
+        #chat-log {
+            background: rgba(0, 0, 0, 0.2); border-radius: 15px; padding: 15px;
+            margin-top: 20px; min-height: 50px; font-size: 0.9rem; line-height: 1.4;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
+        .user-text { color: #94a3b8; font-style: italic; margin-bottom: 5px; }
+        .ai-text { color: var(--accent-color); font-weight: 600; }
 
-        /* STATE: RECORDING */
-        body.recording .glow-ring {
-            background: var(--record-color);
-            opacity: 0.6;
-            animation: pulse-record 1.5s infinite;
-        }
-        body.recording #recordBtn {
-            color: var(--record-color);
-            background: rgba(239, 68, 68, 0.1);
-        }
+        /* Animation States */
+        body.recording .glow-ring { background: var(--record-color); opacity: 0.5; animation: pulse 1.2s infinite; }
+        body.processing #recordBtn { animation: spin 1s infinite linear; color: var(--process-color); }
+        body.speaking .glow-ring { background: var(--accent-color); opacity: 0.6; animation: pulse 0.8s infinite; }
 
-        /* STATE: PROCESSING */
-        body.processing .glow-ring {
-            background: var(--process-color);
-            opacity: 0.5;
-            animation: spin-pulse 2s infinite linear;
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
         }
-        body.processing #recordBtn {
-            color: var(--process-color);
-            animation: spin 1s infinite linear;
-        }
-
-        /* STATE: AI SPEAKING */
-        body.speaking .glow-ring {
-            background: var(--accent-color);
-            opacity: 0.8;
-            animation: wave 1s infinite ease-in-out;
-            width: 120px;
-            height: 120px;
-        }
-
-        /* Status Text */
-        #status {
-            margin-top: 30px;
-            font-size: 0.9rem;
-            color: #94a3b8;
-            height: 20px; /* Prevent layout shift */
-        }
-
-        /* Animations */
-        @keyframes pulse-record {
-            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-            100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes wave {
-            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-            50% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.4; }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-        }
-
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        #status { margin-top: 15px; font-size: 0.8rem; color: #64748b; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Groq AI Assistant</h1>
+        <h1>GROQ VOICE AI</h1>
 
         <div class="mic-wrapper">
             <div class="glow-ring"></div>
-            <button id="recordBtn">
-                <i class="fas fa-microphone"></i>
-            </button>
+            <button id="recordBtn"><i class="fas fa-microphone"></i></button>
         </div>
 
-        <p id="status">Tap microphone to start</p>
+        <div id="status">Tap to start</div>
+
+        <div id="chat-log">
+            <div id="user-display" class="user-text">...</div>
+            <div id="ai-display" class="ai-text">Waiting for voice input...</div>
+        </div>
     </div>
 
     <script>
         const recordBtn = document.getElementById('recordBtn');
         const status = document.getElementById('status');
+        const userDisp = document.getElementById('user-display');
+        const aiDisp = document.getElementById('ai-display');
         const icon = recordBtn.querySelector('i');
-        const body = document.body;
         
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
 
-        recordBtn.addEventListener('click', async () => {
-            if (!isRecording) {
-                startRecording();
-            } else {
-                stopRecording();
-            }
+        recordBtn.addEventListener('click', () => {
+            if (!isRecording) startRecording();
+            else stopRecording();
         });
 
         async function startRecording() {
@@ -187,79 +109,61 @@
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
 
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    sendAudioToBackend(audioBlob);
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/wav' });
+                    processVoice(blob);
                 };
 
                 mediaRecorder.start();
                 isRecording = true;
-                
-                // Update UI
-                body.className = 'recording';
+                document.body.className = 'recording';
                 icon.className = 'fas fa-stop';
                 status.textContent = "Listening...";
-
             } catch (err) {
-                alert("Microphone access denied!");
+                alert("Please enable microphone access.");
             }
         }
 
         function stopRecording() {
             mediaRecorder.stop();
             isRecording = false;
-            
-            // Update UI
-            body.className = 'processing';
-            icon.className = 'fas fa-spinner'; // Spin icon handled by CSS rotation
-            status.textContent = "Thinking...";
+            document.body.className = 'processing';
+            icon.className = 'fas fa-circle-notch';
+            status.textContent = "Processing...";
             recordBtn.disabled = true;
         }
 
-        async function sendAudioToBackend(blob) {
+        async function processVoice(blob) {
             const formData = new FormData();
-            formData.append('audio', blob, 'recording.wav');
+            formData.append('audio', blob);
 
             try {
-                const response = await fetch('/talk', {
-                    method: 'POST',
-                    body: formData
-                });
+                const res = await fetch('/talk', { method: 'POST', body: formData });
+                if (!res.ok) throw new Error("API Error");
 
-                if (!response.ok) throw new Error("Server Error");
-
-                const audioBlob = await response.blob();
-                const audioUrl = URL.createObjectURL(audioBlob);
+                // Play Audio Response
+                const audioBlob = await res.blob();
+                const audio = new Audio(URL.createObjectURL(audioBlob));
                 
-                // Play Audio
-                const audio = new Audio(audioUrl);
-                
-                // Update UI for Speaking
-                body.className = 'speaking';
+                document.body.className = 'speaking';
                 icon.className = 'fas fa-volume-up';
-                status.textContent = "AI Speaking...";
-                
+                status.textContent = "AI is speaking";
+
                 audio.play();
+                audio.onended = resetUI;
 
-                audio.onended = () => {
-                    resetUI();
-                };
-
-            } catch (error) {
-                console.error(error);
-                status.textContent = "Error: " + error.message;
+            } catch (err) {
+                console.error(err);
+                status.textContent = "Error occurred.";
                 resetUI();
             }
         }
 
         function resetUI() {
-            body.className = '';
+            document.body.className = '';
             icon.className = 'fas fa-microphone';
-            status.textContent = "Tap microphone to start";
+            status.textContent = "Tap to start";
             recordBtn.disabled = false;
         }
     </script>
