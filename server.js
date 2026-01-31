@@ -7,11 +7,6 @@ const Groq = require("groq-sdk");
 const cors = require("cors");
 
 const app = express();
-// Siguraduhin na exist ang 'uploads' folder
-if (!fs.existsSync('uploads')) {
-    fs.mkdirSync('uploads');
-}
-
 const upload = multer({ dest: "uploads/" });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -19,23 +14,17 @@ app.use(cors());
 app.use(express.static("public"));
 app.use(express.json());
 
+// Main Route
 app.post("/talk", upload.single("audio"), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: "No audio file uploaded." });
-    }
+    if (!req.file) return res.status(400).json({ error: "No audio uploaded" });
 
-    // FIX: I-rename ang multer file para magkaroon ng extension
-    // Mahalaga ito para hindi mag-error ang Groq STT
     const tempPath = req.file.path;
     const inputAudioPath = tempPath + ".wav";
     fs.renameSync(tempPath, inputAudioPath);
-
     const outputAudioPath = path.resolve(`uploads/output_${Date.now()}.wav`);
 
     try {
         console.log("1. Processing STT...");
-
-        // --- STEP 1: STT (Speech to Text) ---
         const transcription = await groq.audio.transcriptions.create({
             file: fs.createReadStream(inputAudioPath),
             model: "whisper-large-v3-turbo",
@@ -45,76 +34,56 @@ app.post("/talk", upload.single("audio"), async (req, res) => {
         const userText = transcription.text;
         console.log("User said:", userText);
 
-        if (!userText || userText.trim().length === 0) {
-            throw new Error("I couldn't hear anything clearly.");
-        }
-
-        // --- STEP 2: LLM (Text Generation) ---
         console.log("2. Generating AI Response...");
         const chatCompletion = await groq.chat.completions.create({
-            messages: [
-                {
-                    role: "system",
-                    content: "You are a helpful and witty voice assistant. Keep answers concise.",
-                },
-                {
-                    role: "user",
-                    content: userText,
-                },
-            ],
-            // Gamitin ang model na gusto mo, or stable fallback
-            model: "llama-3.3-70b-versatile", 
-            temperature: 0.7,
-            max_completion_tokens: 1024,
+            messages: [{ role: "user", content: userText }],
+            model: "llama-3.3-70b-versatile",
         });
 
-        const aiResponseText = chatCompletion.choices[0]?.message?.content || "Sorry, I'm having trouble thinking right now.";
+        const aiResponseText = chatCompletion.choices[0]?.message?.content || "No response.";
         console.log("AI replied:", aiResponseText);
 
-        // --- STEP 3: TTS (Text to Speech) ---
+        // --- STEP 3: TTS (Fixed using Native Fetch) ---
         console.log("3. Converting Text to Speech...");
-        const wav = await groq.audio.speech.create({
-            model: "canopylabs/orpheus-v1-english",
-            voice: "autumn",
-            response_format: "wav",
-            input: aiResponseText,
+
+        const ttsResponse = await fetch("https://api.groq.com/openai/v1/audio/speech", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "canopylabs/orpheus-v1-english",
+                voice: "autumn",
+                input: aiResponseText,
+                response_format: "wav"
+            })
         });
 
-        const buffer = Buffer.from(await wav.arrayBuffer());
+        if (!ttsResponse.ok) {
+            const errBody = await ttsResponse.text();
+            throw new Error(`Groq TTS API Error: ${errBody}`);
+        }
+
+        const arrayBuffer = await ttsResponse.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
         await fs.promises.writeFile(outputAudioPath, buffer);
 
-        console.log("4. Sending Audio back!");
-
-        // Ipadala ang audio file sa frontend
-        res.sendFile(outputAudioPath, async (err) => {
-            // Linisin ang mga files pagkatapos maipadala
-            try {
-                if (fs.existsSync(inputAudioPath)) fs.unlinkSync(inputAudioPath);
-                if (fs.existsSync(outputAudioPath)) {
-                    // Bigyan ng konting delay bago burahin para siguradong tapos na ang stream
-                    setTimeout(() => {
-                        if (fs.existsSync(outputAudioPath)) fs.unlinkSync(outputAudioPath);
-                    }, 5000);
-                }
-            } catch (e) {
-                console.error("Cleanup error:", e);
-            }
+        console.log("4. Audio generated! Sending to client...");
+        res.sendFile(outputAudioPath, () => {
+            // Cleanup files
+            if (fs.existsSync(inputAudioPath)) fs.unlinkSync(inputAudioPath);
+            setTimeout(() => {
+                if (fs.existsSync(outputAudioPath)) fs.unlinkSync(outputAudioPath);
+            }, 10000);
         });
 
     } catch (error) {
         console.error("Error processing request:", error);
-        
-        // Cleanup kung nag-error
         if (fs.existsSync(inputAudioPath)) fs.unlinkSync(inputAudioPath);
-        
-        res.status(500).json({ 
-            error: "Something went wrong.", 
-            details: error.message 
-        });
+        res.status(500).json({ error: error.message });
     }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Server ready at http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server at http://localhost:${PORT}`));
