@@ -18,16 +18,19 @@ app.post("/ask-alexatron", async (req, res) => {
             messages: [
                 { 
                     role: "system", 
-                    content: `You are Alexatron, a smart and friendly AI voice assistant created by April Manalo. 
-                              Rules:
-                              1. You can understand both Tagalog and English.
+                    content: `You are Alexatron, a smart and friendly AI assistant created by April Manalo. 
+                              Personality: Helpful, concise, and professional.
+                              Instructions:
+                              1. Understand Tagalog and English.
                               2. ALWAYS respond in English only. 
-                              3. Keep your answers concise, natural, and friendly. 
-                              4. You can hear because we use stt to convert speech to text but don't repeat the words that you can hear the user if not needed.` 
+                              3. Keep answers under 3 sentences for fast voice interaction.
+                              4. Do not repeat the user's transcript unless necessary.
+                              5. Since you are voice-activated, be ready to assist immediately.` 
                 },
                 { role: "user", content: userMessage }
             ],
-            model: "openai/gpt-oss-120b",
+            // Siguraduhin na ang model ay Llama-3.3-70b-versatile for stability
+            model: "llama-3.3-70b-versatile", 
             temperature: 0.6,
         });
 
