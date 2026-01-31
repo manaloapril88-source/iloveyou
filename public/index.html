@@ -6,19 +6,21 @@
     <title>Alexatron AI - Voice Activated</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; transition: 0.5s; }
-        #recordBtn { width: 120px; height: 120px; border-radius: 50%; border: none; background: #3b82f6; color: white; font-size: 2.5rem; cursor: pointer; transition: 0.3s; position: relative; }
+        body { background: #0f172a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; transition: background 0.5s; }
+        h1 { letter-spacing: 5px; color: #3b82f6; text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
         
-        /* State Styles */
-        .listening-wake #recordBtn { background: #10b981; box-shadow: 0 0 20px #10b981; } /* Green pag naghihintay ng wake word */
-        .recording #recordBtn { background: #ef4444; animation: pulse 1.5s infinite; } /* Red pag kinukuha na command */
-        .processing #recordBtn { animation: spin 2s infinite linear; color: #fbbf24; }
-        .speaking #recordBtn { background: #8b5cf6; box-shadow: 0 0 30px #8b5cf6; }
+        #recordBtn { width: 120px; height: 120px; border-radius: 50%; border: none; background: #1e293b; color: #3b82f6; font-size: 2.5rem; cursor: pointer; transition: 0.4s; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        
+        /* State Colors */
+        .listening-wake #recordBtn { color: #10b981; border: 2px solid #10b981; } 
+        .recording #recordBtn { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+        .processing #recordBtn { color: #f59e0b; animation: spin 2s infinite linear; }
+        .speaking #recordBtn { background: #3b82f6; color: white; box-shadow: 0 0 30px #3b82f6; }
 
-        #status { margin-top: 25px; font-size: 1.1rem; color: #94a3b8; text-align: center; max-width: 80%; }
-        #transcript-preview { margin-top: 10px; font-style: italic; color: #4b5563; font-size: 0.9rem; }
+        #status { margin-top: 30px; font-size: 1.1rem; color: #94a3b8; text-align: center; font-weight: 300; }
+        #transcript-preview { margin-top: 15px; font-style: italic; color: #64748b; font-size: 0.9rem; min-height: 1.2rem; }
         
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -26,7 +28,7 @@
 
     <h1>ALEXATRON</h1>
     <button id="recordBtn"><i class="fas fa-microphone"></i></button>
-    <div id="status">Say "Alexatron" or "Computer" to wake me up</div>
+    <div id="status">Click the mic once, then say "Computer" or "AI"</div>
     <div id="transcript-preview"></div>
 
     <script>
@@ -39,18 +41,18 @@
         const recognition = new SpeechRecognition();
         const synth = window.speechSynthesis;
 
-        // Wake word settings
-        const WAKE_WORDS = ["alexatron", "computer", "hey computer", "hey alexatron"];
+        // Configuration
+        const WAKE_WORDS = ["computer", "ai"]; 
         let isActiveCommand = false;
+        let isAudioUnlocked = false;
 
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
-        // Start listening immediately
+        // Auto-start listening
         window.onload = () => {
-            recognition.start();
-            console.log("Alexatron is waiting for wake word...");
+            try { recognition.start(); } catch(e) {}
         };
 
         recognition.onresult = async (event) => {
@@ -58,26 +60,24 @@
             let finalTranscript = '';
 
             for (let i = event.resultIndex; i < event.results.length; ++i) {
+                let text = event.results[i][0].transcript.toLowerCase().trim();
                 if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript.toLowerCase();
+                    finalTranscript += text;
                 } else {
-                    interimTranscript += event.results[i][0].transcript.toLowerCase();
+                    interimTranscript += text;
                 }
             }
 
             preview.textContent = interimTranscript || finalTranscript;
 
-            // Check for Wake Word
             if (!isActiveCommand) {
-                const heardWakeWord = WAKE_WORDS.some(word => interimTranscript.includes(word) || finalTranscript.includes(word));
-                
-                if (heardWakeWord) {
-                    console.log("Wake word detected!");
+                // Wake word check
+                const heard = (interimTranscript + " " + finalTranscript).split(" ");
+                if (WAKE_WORDS.some(wake => heard.includes(wake))) {
                     triggerCommandMode();
                 }
             } else if (finalTranscript !== '') {
-                // We are in command mode and got the final sentence
-                recognition.stop(); // Stop listening while processing
+                recognition.stop(); 
                 getAIResponse(finalTranscript);
             }
         };
@@ -85,13 +85,16 @@
         function triggerCommandMode() {
             isActiveCommand = true;
             body.className = 'recording';
-            status.textContent = "I'm listening... What can I do for you?";
-            // Play a small beep sound if you want
-            const beep = new AudioContext();
-            const osc = beep.createOscillator();
-            osc.connect(beep.destination);
+            status.textContent = "Listening to your command...";
+            
+            // Beep feedback
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, ctx.currentTime);
+            osc.connect(ctx.destination);
             osc.start();
-            osc.stop(beep.currentTime + 0.1);
+            osc.stop(ctx.currentTime + 0.1);
         }
 
         async function getAIResponse(text) {
@@ -115,35 +118,43 @@
             synth.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
-            
+
+            // Voice selection
+            const voices = synth.getVoices();
+            const femaleVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Female"));
+            if (femaleVoice) utterance.voice = femaleVoice;
+
             utterance.onstart = () => {
                 body.className = 'speaking';
-                status.textContent = "Alexatron: " + text;
+                status.textContent = text;
             };
 
-            utterance.onend = () => {
-                resetToWakeMode();
-            };
-
+            utterance.onend = () => { resetToWakeMode(); };
             synth.speak(utterance);
         }
 
         function resetToWakeMode() {
             isActiveCommand = false;
             body.className = 'listening-wake';
-            status.textContent = 'Say "Alexatron" or "Computer" to wake me up';
+            status.textContent = 'Say "Computer" or "AI" to start';
             preview.textContent = "";
-            
-            // Restart recognition to keep waiting for wake word
             try { recognition.start(); } catch(e) {}
         }
 
-        // Restart if it dies
         recognition.onend = () => {
-            if (!isActiveCommand) recognition.start();
+            if (!isActiveCommand) {
+                try { recognition.start(); } catch(e) {}
+            }
         };
 
-        recordBtn.addEventListener('click', () => triggerCommandMode());
+        // Important: First click unlocks audio for the whole session
+        recordBtn.addEventListener('click', () => {
+            if(!isAudioUnlocked) {
+                synth.speak(new SpeechSynthesisUtterance("System online."));
+                isAudioUnlocked = true;
+            }
+            triggerCommandMode();
+        });
     </script>
 </body>
 </html>
