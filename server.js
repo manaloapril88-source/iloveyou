@@ -10,13 +10,11 @@ app.use(cors());
 app.use(express.static("public"));
 app.use(express.json());
 
-// Main Chat Endpoint
 app.post("/ask-alexatron", async (req, res) => {
     const userMessage = req.body.message;
 
-    // Log para makita mo sa terminal kung pumasok ang text mula sa STT
-    console.log(`\n--- New Command ---`);
-    console.log(`User: ${userMessage}`);
+    // Log para mamonitor mo ang conversation sa terminal
+    console.log(`\n[USER]: ${userMessage}`);
 
     try {
         const chatCompletion = await groq.chat.completions.create({
@@ -24,31 +22,36 @@ app.post("/ask-alexatron", async (req, res) => {
                 { 
                     role: "system", 
                     content: `You are Alexatron, a smart voice assistant created by April Manalo. 
-                              Tone: Concise, professional, and friendly. 
-                              Rule: Always respond in English only (max 2 sentences).` 
+                              Tone: Concise, helpful, and friendly. 
+                              Rule: Respond in English only. Keep it very short (max 2 sentences) for voice clarity.` 
                 },
                 { role: "user", content: userMessage }
             ],
             model: "llama-3.3-70b-versatile",
             temperature: 0.6,
+            max_tokens: 150, // Limit para mabilis ang response
         });
 
-        const reply = chatCompletion.choices[0]?.message?.content || "System error.";
+        const reply = chatCompletion.choices[0]?.message?.content || "I'm sorry, I couldn't process that.";
         
-        console.log(`Alexatron: ${reply}`);
+        console.log(`[ALEXATRON]: ${reply}`);
         res.json({ reply: reply });
 
     } catch (error) {
-        console.error("Groq API Error:", error.message);
-        res.status(500).json({ error: "Alexatron is currently overthinking." });
+        console.error("GROQ API ERROR:", error.message);
+        
+        // Mag-send ng friendly error sa UI para hindi ma-stuck si Alexatron
+        res.status(500).json({ 
+            reply: "I am having trouble connecting to my brain. Please check your internet or API key." 
+        });
     }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`-------------------------------------------`);
-    console.log(`🚀 ALEXATRON SERVER IS RUNNING`);
-    console.log(`🌐 Local Link: http://localhost:${PORT}`);
-    console.log(`🛠️ Developer: April Manalo`);
+    console.log(`🚀 ALEXATRON SERVER IS READY`);
+    console.log(`📍 URL: http://localhost:${PORT}`);
+    console.log(`🛡️ Status: Stable & Monitoring`);
     console.log(`-------------------------------------------`);
 });
