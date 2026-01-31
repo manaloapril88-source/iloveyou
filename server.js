@@ -17,7 +17,7 @@ app.post("/ask-alexatron", async (req, res) => {
                 { role: "system", content: "You are Alexatron, a smart AI created by April Manalo. Respond in 1-2 English sentences only." },
                 { role: "user", content: req.body.message }
             ],
-            model: "llama-3.3-70b-versatile",
+            model: "groq/compound",
             temperature: 0.6,
         });
         res.json({ reply: chatCompletion.choices[0]?.message?.content || "Error." });
