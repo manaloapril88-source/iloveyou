@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alexatron AI - JSON Voice System</title>
+    <title>Alexatron AI - Smart Switch</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .container { text-align: center; background: #1e293b; padding: 2.5rem; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); width: 90%; max-width: 400px; border: 1px solid #334155; }
-        h1 { letter-spacing: 5px; color: #3b82f6; margin: 0 0 20px 0; }
+        h1 { letter-spacing: 5px; color: #3b82f6; margin: 0 0 10px 0; }
         #recordBtn { width: 110px; height: 110px; border-radius: 50%; border: 3px solid #334155; background: #1e293b; color: #3b82f6; font-size: 2.5rem; cursor: pointer; transition: 0.4s; margin-bottom: 20px; outline: none; }
         #status { font-size: 1rem; color: #10b981; min-height: 1.5rem; margin-bottom: 10px; font-weight: 500; }
         #preview { font-size: 0.85rem; color: #64748b; font-style: italic; min-height: 1.2rem; max-width: 100%; word-wrap: break-word; }
         
+        /* State Colors */
         .listening-wake #recordBtn { border-color: #10b981; color: #10b981; }
         .recording #recordBtn { background: #ef4444; color: white; border-color: #ef4444; animation: pulse 1.5s infinite; }
         .processing #recordBtn { color: #f59e0b; border-color: #f59e0b; animation: spin 2s infinite linear; }
@@ -27,7 +28,7 @@
     <div class="container">
         <h1>ALEXATRON</h1>
         <button id="recordBtn"><i class="fas fa-microphone"></i></button>
-        <div id="status">Click Mic to Start</div>
+        <div id="status">Click Mic to Unlock</div>
         <div id="preview">Ready...</div>
     </div>
 
@@ -72,7 +73,6 @@
             } else {
                 clearTimeout(silenceTimer);
                 if (interim || final) {
-                    // FIX: 2.5s delay para hindi ka maputol agad
                     silenceTimer = setTimeout(() => {
                         const cmd = interim || final;
                         if (cmd.length > 2) {
@@ -91,6 +91,7 @@
             status.textContent = "Listening...";
             status.style.color = "#ef4444";
             
+            // Beep
             const ctx = new AudioContext();
             const osc = ctx.createOscillator();
             osc.connect(ctx.destination);
@@ -109,7 +110,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: text })
                 });
-                const data = await res.json();
+                const data = await res.json(); // Data is {language, response}
                 speak(data.response, data.language);
             } catch (err) { reset(); }
         }
@@ -120,22 +121,37 @@
 
             const utter = new SpeechSynthesisUtterance(text);
             
-            // AI-Driven Voice Selection
-            let selectedVoice;
+            // AGGRESSIVE VOICE SEARCH
+            let selectedVoice = null;
             if (lang === "tl") {
-                selectedVoice = voices.find(v => v.lang.includes("fil") || v.lang.includes("tl") || v.name.includes("Philippines"));
+                selectedVoice = voices.find(v => 
+                    v.lang.includes("PH") || 
+                    v.lang.includes("fil") || 
+                    v.name.toLowerCase().includes("philippines") ||
+                    v.name.toLowerCase().includes("rizal") ||
+                    v.name.toLowerCase().includes("honey")
+                );
+                utter.lang = 'fil-PH';
             } else {
-                selectedVoice = voices.find(v => v.lang.includes("en-US") || v.name.includes("Google US English"));
+                selectedVoice = voices.find(v => 
+                    v.lang.includes("en-US") || 
+                    v.name.toLowerCase().includes("google us english") ||
+                    v.name.toLowerCase().includes("zira")
+                );
+                utter.lang = 'en-US';
             }
 
             utter.voice = selectedVoice || voices[0];
+            
             utter.onstart = () => { 
                 body.className = 'speaking'; 
                 status.textContent = text; 
                 status.style.color = "#3b82f6";
             };
+            
             utter.onend = () => { isProcessing = false; reset(); };
             utter.onerror = () => { isProcessing = false; reset(); };
+            
             synth.speak(utter);
         }
 
@@ -145,17 +161,22 @@
             body.className = 'listening-wake';
             status.textContent = 'Say "Computer" or "AI"';
             status.style.color = "#10b981";
-            preview.textContent = "System Ready";
+            preview.textContent = "Ready to listen";
             try { recognition.start(); } catch(e) {}
         }
 
-        recordBtn.onclick = () => { 
-            synth.speak(new SpeechSynthesisUtterance("System Initialized"));
-            reset(); 
+        recordBtn.onclick = () => {
+            loadVoices();
+            synth.speak(new SpeechSynthesisUtterance("System active"));
+            reset();
         };
-        
+
         recognition.onstart = () => { status.textContent = 'Say "Computer" or "AI"'; };
-        recognition.onend = () => { if(!isActive && !isProcessing && !synth.speaking) try { recognition.start(); } catch(e){} };
+        recognition.onend = () => { 
+            if(!isActive && !isProcessing && !synth.speaking) {
+                try { recognition.start(); } catch(e){} 
+            }
+        };
 
         window.onload = () => { loadVoices(); };
     </script>
