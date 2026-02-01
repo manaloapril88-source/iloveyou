@@ -22,7 +22,7 @@ app.post("/ask-alexatron", async (req, res) => {
                 },
                 { role: "user", content: req.body.message }
             ],
-            model: "llama-3.3-70b-versatile",
+            model: "groq/compound",
             temperature: 0.6,
         });
 
