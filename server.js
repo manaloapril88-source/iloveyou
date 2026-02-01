@@ -5,7 +5,7 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const textToSpeech = new (require('@google-cloud/text-to-speech').TextToSpeechClient)();
-const speech = require('@google-cloud/speech').v1p1beta1; // Use v1p1beta1 for more formats
+const speech = require('@google-cloud/speech').v1;  // Use v1 (stable & no enum issues)
 
 const app = express();
 
@@ -16,7 +16,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const upload = multer({ dest: "/tmp/" });
 
 // ──────────────────────────────────────────────
-// DUAL-MODE ENDPOINT WITH GOOGLE STT + TTS
+// FIXED DUAL-MODE ENDPOINT WITH GOOGLE STT + TTS
 // ──────────────────────────────────────────────
 app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
   console.log("───────────────────────────────");
@@ -31,7 +31,7 @@ app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
   console.log("→ File received:", req.file.originalname, req.file.size, "bytes");
 
   try {
-    // 1. GOOGLE STT (Speech-to-Text)
+    // 1. GOOGLE STT (Speech-to-Text) - FIXED VERSION
     console.log("→ Starting Google STT...");
     const client = new speech.SpeechClient();
 
@@ -41,10 +41,10 @@ app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
     };
 
     const config = {
-      encoding: speech.RecognitionConfig.AudioEncoding.LINEAR16, // default assumption; change if needed
+      encoding: 'LINEAR16',  // String literal (no enum) - works in v1
       sampleRateHertz: 16000,
       languageCode: 'en-US',
-      model: 'latest_long', // or 'chirp' for better accuracy
+      model: 'latest_long',  // or 'default' or 'command_and_search'
     };
 
     const request = {
@@ -53,10 +53,13 @@ app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
     };
 
     const [response] = await client.recognize(request);
-    const userText = response.results
-      .map(result => result.alternatives[0].transcript)
-      .join('\n')
-      .trim();
+    let userText = '';
+    if (response.results && response.results.length > 0) {
+      userText = response.results
+        .map(result => result.alternatives[0].transcript)
+        .join('\n')
+        .trim();
+    }
 
     console.log("[STT] → User said:", userText || "(empty transcription)");
 
@@ -65,7 +68,7 @@ app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
       return res.status(400).json({ error: "No speech detected in audio" });
     }
 
-    // 2. Groq LLM (Alexatron reply) - keep this since no rate limit issue here
+    // 2. Groq LLM (Alexatron reply)
     console.log("→ Generating reply with Groq...");
     const groq = new (require("groq-sdk").Groq)({ apiKey: process.env.GROQ_API_KEY });
 
@@ -97,7 +100,7 @@ Respond in English ONLY. Be professional, witty, and concise (maximum 2 sentence
     const [ttsResponse] = await textToSpeech.synthesizeSpeech(ttsRequest);
     console.log("[TTS] → MP3 generated successfully, size:", ttsResponse.audioContent.length, "bytes");
 
-    // Dual mode detection
+    // Dual mode: raw MP3 for ESP32, JSON for browser/curl
     const userAgent = req.headers['user-agent'] || "";
     const isLikelyESP32 = userAgent.includes("ESP32") || userAgent.includes("HTTPClient") || userAgent.includes("Arduino");
 
