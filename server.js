@@ -12,18 +12,23 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public"))); // Serve UI
+app.use(express.static(path.join(__dirname, "public")));
 
 const upload = multer({ dest: "/tmp/" });
 
-// ESP32 audio endpoint → returns MP3 directly
 app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
+  console.log("Received audio request");
+
   if (!req.file) {
-    return res.status(400).send("No audio uploaded");
+    console.log("No file uploaded");
+    return res.status(400).json({ error: "No audio uploaded" });
   }
 
+  console.log("File received:", req.file.originalname, req.file.size, "bytes");
+
   try {
-    // 1. Groq Whisper STT
+    // 1. STT
+    console.log("Starting Groq Whisper STT...");
     const transcription = await groq.audio.transcriptions.create({
       file: fs.createReadStream(req.file.path),
       model: "whisper-large-v3-turbo",
@@ -33,11 +38,15 @@ app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
     });
 
     const userText = transcription.text.trim();
-    console.log("[STT] User:", userText);
+    console.log("[STT SUCCESS] User said:", userText || "(empty transcription)");
 
-    if (!userText) throw new Error("Empty transcription");
+    if (!userText) {
+      console.log("Empty transcription - throwing error");
+      return res.status(400).json({ error: "No speech detected in audio" });
+    }
 
-    // 2. Alexatron LLM
+    // 2. LLM
+    console.log("Generating Alexatron reply...");
     const completion = await groq.chat.completions.create({
       messages: [
         {
@@ -52,33 +61,42 @@ Respond in English ONLY. Be professional, witty, and concise (maximum 2 sentence
       max_tokens: 140
     });
 
-    let reply = completion.choices[0]?.message?.content?.trim() || "Sorry, I didn't understand.";
+    const reply = completion.choices[0]?.message?.content?.trim() || "Sorry, I didn't understand.";
+    console.log("[LLM SUCCESS] Reply:", reply);
 
-    // 3. Google TTS → MP3
+    // 3. TTS
+    console.log("Generating TTS MP3...");
     const ttsRequest = {
       input: { text: reply },
-      voice: { languageCode: "en-US", name: "en-US-Neural2-F" }, // change name if you want other voice
+      voice: { languageCode: "en-US", name: "en-US-Neural2-F" },
       audioConfig: { audioEncoding: "MP3", speakingRate: 1.08, pitch: -1.5 }
     };
 
     const [ttsResponse] = await textToSpeech.synthesizeSpeech(ttsRequest);
+    console.log("[TTS SUCCESS] MP3 generated, length:", ttsResponse.audioContent.length, "bytes");
 
-    res.set({
-      "Content-Type": "audio/mpeg",
-      "Content-Length": ttsResponse.audioContent.length,
-      "Cache-Control": "no-cache"
+    // Return JSON for easy debugging + playback
+    const audioBase64 = ttsResponse.audioContent.toString('base64');
+
+    res.json({
+      success: true,
+      stt: userText,
+      reply: reply,
+      audioBase64: audioBase64,
+      audioLength: ttsResponse.audioContent.length
     });
-
-    res.send(ttsResponse.audioContent);
   } catch (err) {
     console.error("Processing error:", err.message);
-    res.status(500).send("Server error");
+    console.error("Full error:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
   } finally {
-    if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+      console.log("Temp file deleted");
+    }
   }
 });
 
-// Root → serve web UI
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
