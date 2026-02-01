@@ -7,12 +7,14 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     body { background:#0f172a; color:white; font-family:Arial,sans-serif; margin:0; height:100vh; display:flex; align-items:center; justify-content:center; }
-    .container { background:#1e293b; padding:2rem; border-radius:1.5rem; width:90%; max-width:400px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
-    h1 { color:#3b82f6; letter-spacing:4px; margin-bottom:1.5rem; }
+    .container { background:#1e293b; padding:2rem; border-radius:1.5rem; width:90%; max-width:420px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+    h1 { color:#3b82f6; letter-spacing:4px; margin-bottom:1rem; }
     #recordBtn { width:110px; height:110px; border-radius:50%; background:#1e293b; border:4px solid #334155; color:#3b82f6; font-size:3rem; cursor:pointer; transition:all 0.3s; margin:1rem auto; }
     #recordBtn.recording { background:#ef4444; color:white; border-color:#ef4444; animation:pulse 1.2s infinite; }
-    #status { font-size:1.1rem; min-height:1.5rem; color:#10b981; }
-    #preview { font-size:0.95rem; color:#94a3b8; font-style:italic; min-height:1.3rem; margin:0.8rem 0; }
+    #status { font-size:1.1rem; min-height:1.5rem; color:#10b981; margin:0.5rem 0; }
+    #preview { font-size:0.95rem; color:#94a3b8; font-style:italic; min-height:1.3rem; margin:0.5rem 0; }
+    #aiReply { font-size:1rem; color:#e2e8f0; margin:1rem 0; padding:1rem; background:#334155; border-radius:1rem; white-space:pre-wrap; }
+    #audioPlayer { margin-top:1rem; width:100%; }
     @keyframes pulse { 0%,100% {transform:scale(1);} 50% {transform:scale(1.08);} }
   </style>
 </head>
@@ -20,54 +22,89 @@
   <div class="container">
     <h1>ALEXATRON</h1>
     <button id="recordBtn"><i class="fas fa-microphone"></i></button>
-    <div id="status">Click to speak or say "computer" / "ai"</div>
+    <div id="status">Click to start recording (3-5 sec)</div>
     <div id="preview">Ready</div>
+    <div id="aiReply"></div>
+    <audio id="audioPlayer" controls></audio>
   </div>
 
   <script>
     const recordBtn = document.getElementById('recordBtn');
     const status = document.getElementById('status');
     const preview = document.getElementById('preview');
+    const aiReplyDiv = document.getElementById('aiReply');
+    const audioPlayer = document.getElementById('audioPlayer');
 
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    let mediaRecorder;
+    let audioChunks = [];
 
-    let isActive = false;
-
-    recognition.onresult = e => {
-      let transcript = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        transcript += e.results[i][0].transcript;
+    recordBtn.onclick = async () => {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        return;
       }
-      preview.textContent = transcript;
 
-      if (!isActive && (transcript.toLowerCase().includes('computer') || transcript.toLowerCase().includes('ai'))) {
-        startListening();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = sendToServer;
+
+        mediaRecorder.start();
+        recordBtn.classList.add('recording');
+        status.textContent = "Recording... Speak now (3-5 sec)";
+        preview.textContent = "";
+        aiReplyDiv.textContent = "";
+        audioPlayer.src = "";
+
+        // Auto-stop after 5 seconds
+        setTimeout(() => {
+          if (mediaRecorder.state === "recording") mediaRecorder.stop();
+        }, 5000);
+      } catch (err) {
+        status.textContent = "Microphone access denied";
+        console.error(err);
       }
     };
 
-    function startListening() {
-      isActive = true;
-      recordBtn.classList.add('recording');
-      status.textContent = "Listening...";
-      preview.textContent = "";
+    async function sendToServer() {
+      recordBtn.classList.remove('recording');
+      status.textContent = "Processing...";
+
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.wav");
+
+      try {
+        const res = await fetch("/alexatron-voice", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          status.textContent = "Success!";
+          preview.textContent = "You said: " + data.stt;
+          aiReplyDiv.textContent = "Alexatron: " + data.reply;
+
+          // Play TTS audio from base64
+          const audioSrc = "data:audio/mp3;base64," + data.audioBase64;
+          audioPlayer.src = audioSrc;
+          audioPlayer.style.display = "block";
+          audioPlayer.play().catch(e => console.error("Playback error:", e));
+        } else {
+          status.textContent = "Error: " + (data.error || "Unknown");
+          preview.textContent = "";
+          aiReplyDiv.textContent = "";
+        }
+      } catch (err) {
+        status.textContent = "Network error";
+        console.error(err);
+      }
     }
-
-    recognition.onend = () => {
-      if (isActive) {
-        // Could send here if you want browser-based recording too
-        setTimeout(() => recognition.start(), 300);
-      }
-    };
-
-    recordBtn.onclick = () => {
-      recognition.start();
-      status.textContent = "Voice mode active";
-    };
-
-    // Optional: browser TTS preview or other features
   </script>
 </body>
 </html>
