@@ -1,14 +1,13 @@
 require("dotenv").config();
 const express = require("express");
-const Groq = require("groq-sdk");
 const cors = require("cors");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const textToSpeech = new (require('@google-cloud/text-to-speech').TextToSpeechClient)();
+const speech = require('@google-cloud/speech').v1p1beta1; // Use v1p1beta1 for more formats
 
 const app = express();
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.use(cors());
 app.use(express.json());
@@ -17,13 +16,12 @@ app.use(express.static(path.join(__dirname, "public")));
 const upload = multer({ dest: "/tmp/" });
 
 // ──────────────────────────────────────────────
-// DUAL-MODE ENDPOINT
+// DUAL-MODE ENDPOINT WITH GOOGLE STT + TTS
 // ──────────────────────────────────────────────
 app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
   console.log("───────────────────────────────");
   console.log("Incoming request at:", new Date().toISOString());
   console.log("From User-Agent:", req.headers['user-agent'] || "unknown");
-  console.log("Accept header:", req.headers['accept'] || "none");
 
   if (!req.file) {
     console.log("→ No file received");
@@ -33,17 +31,33 @@ app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
   console.log("→ File received:", req.file.originalname, req.file.size, "bytes");
 
   try {
-    // 1. STT - Groq Whisper
-    console.log("→ Starting STT...");
-    const transcription = await groq.audio.transcriptions.create({
-      file: fs.createReadStream(req.file.path),
-      model: "whisper-large-v3-turbo",
-      language: "en",
-      response_format: "text",
-      temperature: 0.0
-    });
+    // 1. GOOGLE STT (Speech-to-Text)
+    console.log("→ Starting Google STT...");
+    const client = new speech.SpeechClient();
 
-    const userText = transcription.text.trim();
+    const audioBytes = fs.readFileSync(req.file.path);
+    const audio = {
+      content: audioBytes.toString('base64')
+    };
+
+    const config = {
+      encoding: speech.RecognitionConfig.AudioEncoding.LINEAR16, // default assumption; change if needed
+      sampleRateHertz: 16000,
+      languageCode: 'en-US',
+      model: 'latest_long', // or 'chirp' for better accuracy
+    };
+
+    const request = {
+      audio: audio,
+      config: config,
+    };
+
+    const [response] = await client.recognize(request);
+    const userText = response.results
+      .map(result => result.alternatives[0].transcript)
+      .join('\n')
+      .trim();
+
     console.log("[STT] → User said:", userText || "(empty transcription)");
 
     if (!userText) {
@@ -51,8 +65,10 @@ app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
       return res.status(400).json({ error: "No speech detected in audio" });
     }
 
-    // 2. LLM - Alexatron reply
-    console.log("→ Generating reply...");
+    // 2. Groq LLM (Alexatron reply) - keep this since no rate limit issue here
+    console.log("→ Generating reply with Groq...");
+    const groq = new (require("groq-sdk").Groq)({ apiKey: process.env.GROQ_API_KEY });
+
     const completion = await groq.chat.completions.create({
       messages: [
         {
@@ -70,7 +86,7 @@ Respond in English ONLY. Be professional, witty, and concise (maximum 2 sentence
     const reply = completion.choices[0]?.message?.content?.trim() || "Sorry, I didn't catch that.";
     console.log("[LLM] → Reply:", reply);
 
-    // 3. TTS - Google Text-to-Speech
+    // 3. Google TTS → MP3
     console.log("→ Generating TTS MP3...");
     const ttsRequest = {
       input: { text: reply },
@@ -81,7 +97,7 @@ Respond in English ONLY. Be professional, witty, and concise (maximum 2 sentence
     const [ttsResponse] = await textToSpeech.synthesizeSpeech(ttsRequest);
     console.log("[TTS] → MP3 generated successfully, size:", ttsResponse.audioContent.length, "bytes");
 
-    // Detect if request is from ESP32
+    // Dual mode detection
     const userAgent = req.headers['user-agent'] || "";
     const isLikelyESP32 = userAgent.includes("ESP32") || userAgent.includes("HTTPClient") || userAgent.includes("Arduino");
 
@@ -117,7 +133,7 @@ Respond in English ONLY. Be professional, witty, and concise (maximum 2 sentence
   }
 });
 
-// Root route for UI
+// Root for UI
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
