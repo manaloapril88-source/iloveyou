@@ -5,123 +5,174 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alexatron AI</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .orb { width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, #38bdf8 0%, #1e3a8a 100%); box-shadow: 0 0 30px #38bdf8; transition: all 0.3s ease; margin-bottom: 20px; }
-        .orb.listening { transform: scale(1.1); box-shadow: 0 0 60px #38bdf8; animation: pulse 1.5s infinite; }
-        .orb.thinking { background: radial-gradient(circle, #fbbf24 0%, #92400e 100%); animation: rotate 2s infinite linear; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
-        .status { font-size: 1.2rem; font-weight: bold; color: #94a3b8; margin-top: 10px; }
-        .transcript { margin-top: 20px; color: #38bdf8; font-style: italic; max-width: 80%; text-align: center; }
-        .wake-words { font-size: 0.8rem; color: #475569; position: absolute; bottom: 20px; }
+        :root { --primary: #00d2ff; --bg: #060b13; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--bg); 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        
+        /* The Glow Orb */
+        .orb { 
+            width: 150px; height: 150px; 
+            border-radius: 50%; 
+            background: radial-gradient(circle, var(--primary) 0%, #0045c7 100%); 
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
+            transition: all 0.5s ease;
+        }
+        .listening { transform: scale(1.2); box-shadow: 0 0 50px var(--primary); animation: pulse 1s infinite; }
+        .thinking { filter: hue-rotate(280deg); animation: rotate 2s infinite linear; }
+
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        .controls { margin-top: 40px; text-align: center; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; width: 320px; }
+        select { 
+            width: 100%; padding: 10px; border-radius: 5px; 
+            background: #1a222f; color: #fff; border: 1px solid #334155;
+            margin-top: 10px; cursor: pointer;
+        }
+        .status { margin-bottom: 10px; font-size: 0.9rem; color: #64748b; letter-spacing: 2px; }
+        .transcript { margin-top: 20px; font-weight: 300; color: var(--primary); min-height: 24px; }
     </style>
 </head>
 <body>
 
+    <div class="status" id="status-text">READY: SAY "COMPUTER"</div>
     <div id="visual-orb" class="orb"></div>
-    <div id="status-text" class="status">Waiting for Wake Word...</div>
     <div id="transcript-text" class="transcript"></div>
 
-    <div class="wake-words">Wake words: "Computer", "Alexatron", or "At"</div>
+    <div class="controls">
+        <label style="font-size: 0.8rem; color: #94a3b8;">VOICE ENGINE SELECTION</label>
+        <select id="voice-select">
+            <option>Loading voices...</option>
+        </select>
+    </div>
+
+    <audio id="sfx-listen" src="listen.mp3"></audio>
 
     <script>
         const orb = document.getElementById('visual-orb');
         const statusText = document.getElementById('status-text');
         const transcriptText = document.getElementById('transcript-text');
+        const voiceSelect = document.getElementById('voice-select');
+        const sfxListen = document.getElementById('sfx-listen');
 
-        // Speech Recognition Setup
+        let synth = window.speechSynthesis;
+        let voices = [];
+        let selectedVoiceName = localStorage.getItem('preferredVoice');
+
+        // --- 1. TTS CORE ---
+        function populateVoiceList() {
+            voices = synth.getVoices();
+            voiceSelect.innerHTML = '';
+            
+            voices.forEach((voice) => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.setAttribute('data-name', voice.name);
+                
+                // I-select yung dating pinili kung meron sa storage
+                if (selectedVoiceName === voice.name) {
+                    option.selected = true;
+                }
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        // Fix para sa Chrome
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+
+        function speak(text) {
+            if (synth.speaking) synth.cancel(); // Stop current speech
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Hanapin yung boses base sa pangalan na naka-select sa dropdown
+            const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
+            const voiceToUse = voices.find(v => v.name === selectedOption);
+            
+            if (voiceToUse) {
+                utterance.voice = voiceToUse;
+                // Save choice
+                localStorage.setItem('preferredVoice', voiceToUse.name);
+            }
+
+            utterance.onstart = () => {
+                orb.classList.remove('listening', 'thinking');
+                statusText.innerText = "ALEXATRON SPEAKING...";
+            };
+
+            utterance.onend = () => {
+                statusText.innerText = "WAITING FOR WAKE WORD...";
+            };
+
+            synth.speak(utterance);
+        }
+
+        // Preview and save on change
+        voiceSelect.onchange = () => {
+            const name = voiceSelect.selectedOptions[0].getAttribute('data-name');
+            localStorage.setItem('preferredVoice', name);
+            speak("Voice engine updated.");
+        };
+
+        // --- 2. STT CORE ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
+        
         recognition.continuous = true;
         recognition.interimResults = false;
-        recognition.lang = 'en-US'; // Pwede mong gawing 'fil-PH' kung gusto mo Tagalog lang
-
-        const wakeWords = ["computer", "alexatron", "at"];
-        let isSpeaking = false;
-
-        recognition.onstart = () => { console.log("Recognition started..."); };
+        recognition.lang = 'en-US';
 
         recognition.onresult = async (event) => {
-            const lastResultIndex = event.results.length - 1;
-            const text = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
-            
-            transcriptText.innerText = `You: "${text}"`;
+            const text = event.results[event.results.length - 1][0].transcript.toLowerCase();
+            transcriptText.innerText = `Detected: "${text}"`;
 
-            // Check if AI is currently speaking to avoid self-triggering
-            if (isSpeaking) return;
+            if (text.includes("computer") || text.includes("alexatron") || text.includes("at")) {
+                sfxListen.play();
+                orb.classList.add('listening');
+                statusText.innerText = "LISTENING...";
 
-            // Wake word detection
-            const triggerFound = wakeWords.some(word => text.includes(word));
-
-            if (triggerFound) {
-                const command = text.split(/computer|alexatron|at/).pop().trim();
-                
-                if (command.length > 1) {
-                    processAI(command);
-                } else {
-                    speak("Yes? I am listening.");
-                    statusText.innerText = "Listening for command...";
-                    orb.classList.add('listening');
+                // Extract command
+                const command = text.replace(/computer|alexatron|at/g, '').trim();
+                if (command.length > 2) {
+                    sendToAI(command);
                 }
             }
         };
 
-        recognition.onerror = (err) => {
-            console.error("Speech Error:", err);
-            restartRecognition();
-        };
+        recognition.onend = () => recognition.start(); // Auto-restart STT
 
-        recognition.onend = () => {
-            restartRecognition();
-        };
-
-        function restartRecognition() {
-            setTimeout(() => {
-                try { recognition.start(); } catch(e) {}
-            }, 500);
-        }
-
-        async function processAI(message) {
+        async function sendToAI(message) {
             orb.classList.remove('listening');
             orb.classList.add('thinking');
-            statusText.innerText = "Thinking...";
+            statusText.innerText = "THINKING...";
 
             try {
-                const response = await fetch('/ask', {
+                const res = await fetch('/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message })
                 });
-                const data = await response.json();
-                
-                orb.classList.remove('thinking');
+                const data = await res.json();
                 speak(data.reply);
             } catch (err) {
-                statusText.innerText = "Error connecting to brain.";
-                orb.classList.remove('thinking');
+                statusText.innerText = "CONNECTION ERROR";
             }
         }
 
-        function speak(text) {
-            isSpeaking = true;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onend = () => {
-                isSpeaking = false;
-                statusText.innerText = "Waiting for Wake Word...";
-                orb.classList.remove('listening', 'thinking');
-            };
-            
-            // Optional: Choose a specific voice
-            const voices = window.speechSynthesis.getVoices();
-            utterance.voice = voices.find(v => v.name.includes("Google")) || voices[0];
-            
-            window.speechSynthesis.speak(utterance);
-        }
-
-        // Start everything
+        // Initialize
         window.onload = () => {
+            populateVoiceList();
             recognition.start();
-            // Load voices
-            window.speechSynthesis.getVoices();
         };
     </script>
 </body>
