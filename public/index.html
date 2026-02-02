@@ -1,164 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALEXATRON AI - Web Control</title>
+    <title>ALEXATRON DASHBOARD</title>
     <style>
-        :root { --neon: #00ff88; --dark: #0f172a; --panel: #1e293b; }
-        body { 
-            background: var(--dark); color: white; font-family: 'Segoe UI', sans-serif;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 100vh; margin: 0; padding: 20px;
-        }
-
-        /* The Orb / Mic Button */
-        .orb-wrapper { position: relative; cursor: pointer; margin-bottom: 20px; }
-        .orb {
-            width: 120px; height: 120px; border-radius: 50%;
-            background: radial-gradient(circle, var(--neon) 0%, #064e3b 100%);
-            box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
-            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .orb.active { transform: scale(1.1); box-shadow: 0 0 60px var(--neon); animation: pulse 1s infinite alternate; }
-        
-        @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; } }
-
-        /* UI Elements */
-        .container { width: 100%; max-width: 500px; text-align: center; }
-        #status { color: var(--neon); font-weight: bold; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9em; }
-        
-        .chat-box { 
-            background: var(--panel); border-radius: 12px; padding: 20px; 
-            height: 250px; overflow-y: auto; text-align: left; margin-bottom: 20px;
-            border: 1px solid #334155; font-size: 0.95em;
-        }
-        .msg { margin-bottom: 15px; line-height: 1.4; border-left: 3px solid transparent; padding-left: 10px; }
-        .user-msg { border-color: #94a3b8; color: #cbd5e1; }
-        .ai-msg { border-color: var(--neon); color: white; font-weight: 500; }
-
-        .input-group { display: flex; gap: 10px; }
-        input { 
-            flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155;
-            background: #0f172a; color: white; outline: none;
-        }
-        input:focus { border-color: var(--neon); }
-        button { 
-            background: var(--neon); color: black; border: none; padding: 12px 20px;
-            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;
-        }
-        button:hover { opacity: 0.8; }
+        body { background: #0b0f1a; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        .orb { width: 100px; height: 100px; background: cyan; border-radius: 50%; margin: 20px auto; transition: 0.3s; box-shadow: 0 0 20px cyan; cursor: pointer; }
+        .active { background: #00ff88; box-shadow: 0 0 40px #00ff88; transform: scale(1.1); }
+        #chat { max-width: 500px; margin: 20px auto; background: #1a202c; padding: 15px; border-radius: 10px; height: 200px; overflow-y: auto; text-align: left; }
+        input { padding: 10px; width: 70%; border-radius: 5px; border: none; }
+        button { padding: 10px 20px; background: cyan; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <div id="status">ALEXATRON READY</div>
-
-        <div class="orb-wrapper" onclick="startMic()">
-            <div id="orb" class="orb"></div>
-        </div>
-
-        <div class="chat-box" id="chat">
-            <div class="msg ai-msg">System: I'm listening. Click the orb to speak or type your command below.</div>
-        </div>
-
-        <div class="input-group">
-            <input type="text" id="textInput" placeholder="Type a message..." onkeypress="handleKey(event)">
-            <button onclick="sendText()">SEND</button>
-        </div>
-    </div>
-
-    <audio id="ttsAudio"></audio>
+    <h1>ALEXATRON AI</h1>
+    <div id="orb" class="orb" onclick="startMic()"></div>
+    <p id="status">System Standby</p>
+    <div id="chat"></div>
+    <input type="text" id="userInput" placeholder="Ask Alexatron...">
+    <button onclick="sendText()">SEND</button>
 
     <script>
-        const statusText = document.getElementById('status');
-        const chatBox = document.getElementById('chat');
-        const orb = document.getElementById('orb');
-        const audio = document.getElementById('ttsAudio');
-
-        // 1. ADD MESSAGE TO LOGS
-        function addMsg(role, text) {
-            const div = document.createElement('div');
-            div.className = `msg ${role}-msg`;
-            div.innerHTML = `<strong>${role.toUpperCase()}:</strong> ${text}`;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        // 2. SEND TEXT TO SERVER
         async function sendText() {
-            const input = document.getElementById('textInput');
-            const message = input.value.trim();
-            if (!message) return;
+            const input = document.getElementById('userInput');
+            const msg = input.value;
+            if(!msg) return;
+            
+            document.getElementById('status').innerText = "Thinking...";
+            const chat = document.getElementById('chat');
+            chat.innerHTML += `<p style='color:gray'>You: ${msg}</p>`;
+            input.value = "";
 
-            addMsg('user', message);
-            input.value = '';
-            statusText.innerText = "THINKING...";
-            orb.classList.add('active');
-
-            try {
-                const response = await fetch('/ask-text', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
-                });
-                
-                const data = await response.json();
-                
-                if (data.reply) {
-                    addMsg('ai', data.reply);
-                    statusText.innerText = "ALEXATRON SPEAKING...";
-                    
-                    // PLAY AUDIO FROM SERVER
-                    audio.src = data.audioUrl;
-                    audio.play();
-                }
-            } catch (err) {
-                console.error("Error:", err);
-                statusText.innerText = "SERVER ERROR";
-            }
+            const res = await fetch('/ask-text', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ message: msg })
+            });
+            const data = await res.json();
+            
+            chat.innerHTML += `<p><b>AI:</b> ${data.reply}</p>`;
+            chat.scrollTop = chat.scrollHeight;
+            document.getElementById('status').innerText = "Speaking...";
+            
+            const audio = new Audio(data.audioUrl);
+            audio.play();
+            audio.onended = () => document.getElementById('status').innerText = "Ready";
         }
 
-        // 3. MIC / SPEECH RECOGNITION (WEB TESTER)
         function startMic() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                alert("Your browser doesn't support speech recognition.");
-                return;
-            }
-
-            const recognition = new SpeechRecognition();
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
             recognition.lang = 'en-US';
-
-            recognition.onstart = () => {
-                statusText.innerText = "LISTENING...";
-                orb.classList.add('active');
-            };
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                document.getElementById('textInput').value = transcript;
+            recognition.onstart = () => document.getElementById('orb').classList.add('active');
+            recognition.onresult = (e) => {
+                document.getElementById('userInput').value = e.results[0][0].transcript;
                 sendText();
             };
-
-            recognition.onend = () => {
-                orb.classList.remove('active');
-                if (statusText.innerText === "LISTENING...") {
-                    statusText.innerText = "ALEXATRON READY";
-                }
-            };
-
+            recognition.onend = () => document.getElementById('orb').classList.remove('active');
             recognition.start();
         }
-
-        // 4. AUDIO END EVENT
-        audio.onended = () => {
-            statusText.innerText = "ALEXATRON READY";
-            orb.classList.remove('active');
-        };
-
-        function handleKey(e) { if (e.key === 'Enter') sendText(); }
     </script>
 </body>
 </html>
