@@ -5,6 +5,7 @@ const WebSocket = require("ws");
 const Groq = require("groq-sdk");
 const fs = require("fs");
 const path = require("path");
+const cors = require("cors");
 const { WaveFile } = require('wavefile');
 
 const app = express();
@@ -12,69 +13,83 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Siguraduhing may 'public' folder para sa audio files
-if (!fs.existsSync('./public')) fs.mkdirSync('./public');
+app.use(cors());
+app.use(express.json());
+app.use(express.static("public"));
 
+// --- ENDPOINT PARA SA WEBSITE TEST ---
+app.post("/ask-text", async (req, res) => {
+    try {
+        const { message } = req.body;
+        const chat = await groq.chat.completions.create({
+            messages: [{ role: "user", content: message }],
+            model: "llama-3.3-70b-versatile",
+        });
+        const aiReply = chat.choices[0].message.content;
+
+        // Generate TTS for Website test
+        const speechResponse = await groq.audio.speech.create({
+            model: "canopylabs/orpheus-v1-english",
+            input: aiReply,
+            voice: "en-US-natalie",
+        });
+        const buffer = Buffer.from(await speechResponse.arrayBuffer());
+        const filename = `web_res_${Date.now()}.mp3`;
+        fs.writeFileSync(path.join(__dirname, 'public', filename), buffer);
+
+        res.json({ reply: aiReply, audioUrl: `/${filename}` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- WEBSOCKET PARA SA ESP32 ---
 wss.on("connection", (ws) => {
-    console.log("ESP32 Connected to Alexatron Server");
+    console.log("Device Linked (ESP32 or Dashboard)");
     let audioChunks = [];
 
     ws.on("message", async (data) => {
-        // Tinatanggap ang audio stream mula sa INMP441
-        audioChunks.push(data);
+        if (Buffer.isBuffer(data)) {
+            audioChunks.push(data);
+            clearTimeout(ws.timer);
+            ws.timer = setTimeout(async () => {
+                if (audioChunks.length > 15) {
+                    const buffer = Buffer.concat(audioChunks);
+                    const wav = new WaveFile();
+                    wav.fromScratch(1, 16000, '16', buffer);
+                    fs.writeFileSync('input.wav', wav.toBuffer());
 
-        clearTimeout(ws.timer);
-        ws.timer = setTimeout(async () => {
-            if (audioChunks.length > 20) {
-                console.log("Processing Speech...");
-                const buffer = Buffer.concat(audioChunks);
-                const wav = new WaveFile();
-                wav.fromScratch(1, 16000, '16', buffer);
-                const filename = 'input.wav';
-                fs.writeFileSync(filename, wav.toBuffer());
-
-                try {
-                    // --- 1. STT (Groq Whisper-large-v3-turbo) ---
                     const transcription = await groq.audio.transcriptions.create({
-                        file: fs.createReadStream(filename),
+                        file: fs.createReadStream('input.wav'),
                         model: "whisper-large-v3-turbo",
-                        language: "en",
                     });
-                    console.log("User:", transcription.text);
 
-                    // --- 2. AI Chat (Llama 3.3 70B) ---
-                    const completion = await groq.chat.completions.create({
-                        messages: [{ role: "system", content: "You are Alexatron, a witty and helpful AI assistant." },
-                                   { role: "user", content: transcription.text }],
+                    // Broadcast transcription to dashboard
+                    ws.send(JSON.stringify({ type: 'user', content: transcription.text }));
+
+                    const chat = await groq.chat.completions.create({
+                        messages: [{ role: "user", content: transcription.text }],
                         model: "llama-3.3-70b-versatile",
                     });
-                    const aiReply = completion.choices[0].message.content;
-                    console.log("AI:", aiReply);
+                    const aiReply = chat.choices[0].message.content;
 
-                    // --- 3. TTS (Groq / Orpheus-v1-english) ---
-                    const speechResponse = await groq.audio.speech.create({
+                    const speech = await groq.audio.speech.create({
                         model: "canopylabs/orpheus-v1-english",
                         input: aiReply,
-                        voice: "en-US-natalie", 
                     });
+                    const audioBuf = Buffer.from(await speech.arrayBuffer());
+                    const audioFile = `res_${Date.now()}.mp3`;
+                    fs.writeFileSync(path.join(__dirname, 'public', audioFile), audioBuf);
 
-                    const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
-                    const audioFilename = `res_${Date.now()}.mp3`;
-                    fs.writeFileSync(path.join(__dirname, 'public', audioFilename), audioBuffer);
-
-                    // I-send ang URL pabalik sa ESP32
-                    const publicUrl = `http://${process.env.SERVER_IP}:3000/${audioFilename}`;
-                    ws.send(publicUrl);
-
-                } catch (err) {
-                    console.error("Workflow Error:", err);
+                    // Send audio URL to ESP32
+                    const url = `http://${process.env.SERVER_IP || 'localhost'}:3000/${audioFile}`;
+                    ws.send(url); 
                 }
-                audioChunks = []; 
-            }
-        }, 1200); 
+                audioChunks = [];
+            }, 1200);
+        }
     });
 });
 
-app.use(express.static("public"));
-const PORT = 3000;
-server.listen(PORT, () => console.log(`Alexatron Server running at http://${process.env.SERVER_IP}:${PORT}`));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
