@@ -3,55 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alexatron AI</title>
+    <title>Alexatron AI - Fixed</title>
     <style>
         :root { --primary: #00d2ff; --bg: #060b13; }
         body { 
             font-family: 'Segoe UI', sans-serif; 
-            background: var(--bg); 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            margin: 0; 
+            background: var(--bg); color: white; 
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; 
+            height: 100vh; margin: 0; 
         }
         
-        /* The Glow Orb */
         .orb { 
-            width: 150px; height: 150px; 
-            border-radius: 50%; 
+            width: 150px; height: 150px; border-radius: 50%; 
             background: radial-gradient(circle, var(--primary) 0%, #0045c7 100%); 
             box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
             transition: all 0.5s ease;
         }
-        .listening { transform: scale(1.2); box-shadow: 0 0 50px var(--primary); animation: pulse 1s infinite; }
+        .listening { transform: scale(1.2); box-shadow: 0 0 50px var(--primary); }
         .thinking { filter: hue-rotate(280deg); animation: rotate 2s infinite linear; }
-
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         .controls { margin-top: 40px; text-align: center; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; width: 320px; }
-        select { 
-            width: 100%; padding: 10px; border-radius: 5px; 
-            background: #1a222f; color: #fff; border: 1px solid #334155;
-            margin-top: 10px; cursor: pointer;
-        }
-        .status { margin-bottom: 10px; font-size: 0.9rem; color: #64748b; letter-spacing: 2px; }
-        .transcript { margin-top: 20px; font-weight: 300; color: var(--primary); min-height: 24px; }
+        select { width: 100%; padding: 10px; border-radius: 5px; background: #1a222f; color: #fff; border: 1px solid #334155; margin-top: 10px; }
+        .status { margin-bottom: 10px; font-size: 0.9rem; color: #64748b; letter-spacing: 2px; text-transform: uppercase; }
+        .transcript { margin-top: 20px; font-weight: 300; color: var(--primary); text-align: center; max-width: 80%; }
     </style>
 </head>
 <body>
 
-    <div class="status" id="status-text">READY: SAY "COMPUTER"</div>
+    <div class="status" id="status-text">Ready: Say "Computer"</div>
     <div id="visual-orb" class="orb"></div>
-    <div id="transcript-text" class="transcript"></div>
+    <div id="transcript-text" class="transcript">Waiting...</div>
 
     <div class="controls">
-        <label style="font-size: 0.8rem; color: #94a3b8;">VOICE ENGINE SELECTION</label>
-        <select id="voice-select">
-            <option>Loading voices...</option>
-        </select>
+        <label style="font-size: 0.8rem; color: #94a3b8;">VOICE SELECTION</label>
+        <select id="voice-select"><option>Loading...</option></select>
     </div>
 
     <audio id="sfx-listen" src="listen.mp3"></audio>
@@ -65,115 +52,102 @@
 
         let synth = window.speechSynthesis;
         let voices = [];
-        let selectedVoiceName = localStorage.getItem('preferredVoice');
+        let isBusy = false; // Flag para sa loop prevention
 
-        // --- 1. TTS CORE ---
-        function populateVoiceList() {
+        // --- TTS ENGINE ---
+        function loadVoices() {
             voices = synth.getVoices();
-            voiceSelect.innerHTML = '';
-            
-            voices.forEach((voice) => {
-                const option = document.createElement('option');
-                option.textContent = `${voice.name} (${voice.lang})`;
-                option.setAttribute('data-name', voice.name);
-                
-                // I-select yung dating pinili kung meron sa storage
-                if (selectedVoiceName === voice.name) {
-                    option.selected = true;
-                }
-                voiceSelect.appendChild(option);
-            });
+            voiceSelect.innerHTML = voices.map(v => 
+                `<option value="${v.name}" ${v.name.includes('Google') ? 'selected' : ''}>${v.name}</option>`
+            ).join('');
         }
-
-        // Fix para sa Chrome
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = populateVoiceList;
-        }
+        synth.onvoiceschanged = loadVoices;
 
         function speak(text) {
-            if (synth.speaking) synth.cancel(); // Stop current speech
-
+            isBusy = true; // LOCK MIC
             const utterance = new SpeechSynthesisUtterance(text);
-            
-            // Hanapin yung boses base sa pangalan na naka-select sa dropdown
-            const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
-            const voiceToUse = voices.find(v => v.name === selectedOption);
-            
-            if (voiceToUse) {
-                utterance.voice = voiceToUse;
-                // Save choice
-                localStorage.setItem('preferredVoice', voiceToUse.name);
-            }
+            const selectedVoice = voices.find(v => v.name === voiceSelect.value);
+            if (selectedVoice) utterance.voice = selectedVoice;
 
             utterance.onstart = () => {
                 orb.classList.remove('listening', 'thinking');
-                statusText.innerText = "ALEXATRON SPEAKING...";
+                statusText.innerText = "Alexatron is speaking...";
             };
 
             utterance.onend = () => {
-                statusText.innerText = "WAITING FOR WAKE WORD...";
+                // Buffer para sa echo
+                setTimeout(() => { 
+                    isBusy = false; 
+                    statusText.innerText = "Ready: Say Computer";
+                }, 800);
             };
 
             synth.speak(utterance);
         }
 
-        // Preview and save on change
-        voiceSelect.onchange = () => {
-            const name = voiceSelect.selectedOptions[0].getAttribute('data-name');
-            localStorage.setItem('preferredVoice', name);
-            speak("Voice engine updated.");
-        };
-
-        // --- 2. STT CORE ---
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        
+        // --- STT ENGINE ---
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
         recognition.continuous = true;
         recognition.interimResults = false;
         recognition.lang = 'en-US';
 
-        recognition.onresult = async (event) => {
-            const text = event.results[event.results.length - 1][0].transcript.toLowerCase();
-            transcriptText.innerText = `Detected: "${text}"`;
+        recognition.onresult = (event) => {
+            if (isBusy) return; // Ignore kung nagsasalita ang AI
 
-            if (text.includes("computer") || text.includes("alexatron") || text.includes("at")) {
-                sfxListen.play();
-                orb.classList.add('listening');
-                statusText.innerText = "LISTENING...";
+            const fullTranscript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+            const wakeWords = ["computer", "alexatron", "at"];
+            
+            // Hanapin kung nasaan ang wake word sa sentence
+            let foundWakeWord = "";
+            for (let word of wakeWords) {
+                if (fullTranscript.includes(word)) {
+                    foundWakeWord = word;
+                    break;
+                }
+            }
 
-                // Extract command
-                const command = text.replace(/computer|alexatron|at/g, '').trim();
-                if (command.length > 2) {
-                    sendToAI(command);
+            if (foundWakeWord) {
+                // ETO ANG FIX: Kunin lang ang text simula sa wake word hanggang dulo
+                const parts = fullTranscript.split(foundWakeWord);
+                const actualCommand = parts[parts.length - 1].trim();
+
+                if (actualCommand.length > 1) {
+                    sfxListen.play();
+                    transcriptText.innerText = `You: "${actualCommand}"`;
+                    processAI(actualCommand);
+                } else {
+                    // Wake word lang ang sinabi, walang command
+                    sfxListen.play();
+                    statusText.innerText = "Yes? I'm listening...";
+                    orb.classList.add('listening');
                 }
             }
         };
 
-        recognition.onend = () => recognition.start(); // Auto-restart STT
+        recognition.onend = () => recognition.start();
+        recognition.start();
 
-        async function sendToAI(message) {
+        async function processAI(cmd) {
+            isBusy = true; // LOCK MIC habang nag-iisip
             orb.classList.remove('listening');
             orb.classList.add('thinking');
-            statusText.innerText = "THINKING...";
+            statusText.innerText = "Processing...";
 
             try {
                 const res = await fetch('/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
+                    body: JSON.stringify({ message: cmd })
                 });
                 const data = await res.json();
                 speak(data.reply);
             } catch (err) {
-                statusText.innerText = "CONNECTION ERROR";
+                isBusy = false;
+                statusText.innerText = "Error!";
             }
         }
 
-        // Initialize
-        window.onload = () => {
-            populateVoiceList();
-            recognition.start();
-        };
+        window.onload = loadVoices;
     </script>
 </body>
 </html>
