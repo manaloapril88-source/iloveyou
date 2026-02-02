@@ -12,17 +12,19 @@ app.use(express.json());
 
 app.post("/ask", async (req, res) => {
     const { message } = req.body;
+    if (!message) return res.status(400).json({ error: "Empty message" });
+
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: [{ role: "user", content: message }],
-            model: "llama-3.3-70b-versatile",
+            model: "groq/compound",
         });
 
         const aiResponse = chatCompletion.choices[0]?.message?.content || "Pasensya na, hindi ko naintindihan.";
         res.json({ reply: aiResponse });
     } catch (error) {
         console.error("Groq Error:", error);
-        res.status(500).json({ error: "Nagka-error sa AI." });
+        res.status(500).json({ error: "AI Error. Check API Key or Internet." });
     }
 });
 
