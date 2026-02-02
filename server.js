@@ -17,34 +17,36 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-if (!fs.existsSync(path.join(__dirname, 'public'))) fs.mkdirSync(path.join(__dirname, 'public'));
+// Gawa ng public folder kung wala pa
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir);
 
 // --- WEB TESTER ENDPOINT ---
 app.post("/ask-text", async (req, res) => {
     try {
         const { message } = req.body;
-        console.log(`User: ${message}`);
+        console.log(`Web User: ${message}`);
 
-        // 1. LLM Response
+        // 1. Get Response from Llama
         const chat = await groq.chat.completions.create({
-            messages: [{ role: "system", content: "You are Alexatron AI. Keep responses brief." },
-                       { role: "user", content: message }],
+            messages: [{ role: "user", content: message }],
             model: "llama-3.3-70b-versatile",
         });
         const aiReply = chat.choices[0].message.content;
 
-        // 2. Groq TTS (FIXED VOICE & MODEL)
-        const speech = await groq.audio.speech.create({
-            model: "aura-asteria-en", // Gamitin ang stable model ni Groq
-            voice: "diana", // Pili dito: [autumn, diana, hannah, austin, daniel, troy]
+        // 2. Exact Groq TTS Model & Voice (Autumn)
+        const speechResponse = await groq.audio.speech.create({
+            model: "canopylabs/orpheus-v1-english",
+            voice: "autumn",
             input: aiReply,
-            response_format: "mp3"
+            response_format: "wav"
         });
 
-        const buffer = Buffer.from(await speech.arrayBuffer());
-        const filename = `res_${Date.now()}.mp3`;
-        fs.writeFileSync(path.join(__dirname, 'public', filename), buffer);
+        const buffer = Buffer.from(await speechResponse.arrayBuffer());
+        const filename = `web_res_${Date.now()}.wav`;
+        fs.writeFileSync(path.join(publicDir, filename), buffer);
 
+        // Ibalik ang response sa Website
         res.json({ reply: aiReply, audioUrl: `/${filename}` });
     } catch (err) {
         console.error("Web Error:", err.message);
@@ -52,9 +54,9 @@ app.post("/ask-text", async (req, res) => {
     }
 });
 
-// --- ESP32 WEBSOCKET ---
+// --- ESP32 WEBSOCKET LOGIC ---
 wss.on("connection", (ws) => {
-    console.log("ESP32 Linked!");
+    console.log("ESP32 Connected via WebSocket");
     let audioChunks = [];
 
     ws.on("message", async (data) => {
@@ -62,16 +64,17 @@ wss.on("connection", (ws) => {
             audioChunks.push(data);
             clearTimeout(ws.timer);
             ws.timer = setTimeout(async () => {
-                if (audioChunks.length > 10) {
+                if (audioChunks.length > 15) {
                     const buffer = Buffer.concat(audioChunks);
                     const wav = new WaveFile();
                     wav.fromScratch(1, 16000, '16', buffer);
-                    fs.writeFileSync('input.wav', wav.toBuffer());
+                    const inputPath = path.join(__dirname, 'input.wav');
+                    fs.writeFileSync(inputPath, wav.toBuffer());
 
                     try {
-                        // 3. Groq STT (Whisper-large-v3-turbo)
+                        // Groq STT
                         const transcription = await groq.audio.transcriptions.create({
-                            file: fs.createReadStream('input.wav'),
+                            file: fs.createReadStream(inputPath),
                             model: "whisper-large-v3-turbo",
                         });
 
@@ -82,20 +85,21 @@ wss.on("connection", (ws) => {
                         });
                         const aiReply = chat.choices[0].message.content;
 
-                        // TTS Response for ESP32
+                        // Groq TTS (Autumn)
                         const speech = await groq.audio.speech.create({
-                            model: "aura-asteria-en",
-                            voice: "diana",
+                            model: "canopylabs/orpheus-v1-english",
+                            voice: "autumn",
                             input: aiReply,
+                            response_format: "wav"
                         });
+                        
                         const audioBuf = Buffer.from(await speech.arrayBuffer());
-                        const audioFile = `esp_${Date.now()}.mp3`;
-                        fs.writeFileSync(path.join(__dirname, 'public', audioFile), audioBuf);
+                        const audioFile = `esp_res_${Date.now()}.wav`;
+                        fs.writeFileSync(path.join(publicDir, audioFile), audioBuf);
 
                         // Send URL back to ESP32
-                        const url = `http://${req.headers.host}/${audioFile}`;
-                        ws.send(url);
-                    } catch (e) { console.log("STT Error:", e.message); }
+                        ws.send(`http://${req.headers.host}/${audioFile}`);
+                    } catch (e) { console.error("Process Error:", e.message); }
                 }
                 audioChunks = [];
             }, 1000);
@@ -104,4 +108,4 @@ wss.on("connection", (ws) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Alexatron Online on port ${PORT}`));
+server.listen(PORT, () => console.log(`Alexatron Server Running on Port ${PORT}`));
