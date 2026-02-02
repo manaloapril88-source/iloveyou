@@ -1,112 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALEXATRON AI - Terminal</title>
+    <title>ALEXATRON TESTER</title>
     <style>
-        :root { --primary: #00ff88; --bg: #0b1120; --text: #e2e8f0; }
-        body { 
-            font-family: 'Courier New', monospace; 
-            background: var(--bg); color: var(--text); 
-            display: flex; flex-direction: column; align-items: center; 
-            justify-content: center; height: 100vh; margin: 0; overflow: hidden;
-        }
-
-        /* Orb Animation */
-        .orb-container { position: relative; margin-bottom: 30px; }
-        .orb { 
-            width: 120px; height: 120px; border-radius: 50%; 
-            background: radial-gradient(circle, var(--primary) 0%, #064e3b 100%); 
-            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
-            transition: all 0.5s ease;
-        }
-        .pulse { animation: pulse-animation 2s infinite; }
-        @keyframes pulse-animation {
-            0% { transform: scale(1); box-shadow: 0 0 20px var(--primary); }
-            50% { transform: scale(1.05); box-shadow: 0 0 50px var(--primary); }
-            100% { transform: scale(1); box-shadow: 0 0 20px var(--primary); }
-        }
-
-        /* Console Style */
-        .terminal {
-            width: 80%; max-width: 600px; height: 300px;
-            background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b;
-            border-radius: 10px; padding: 20px; overflow-y: auto;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-        .log-entry { margin-bottom: 10px; line-height: 1.4; border-left: 3px solid var(--primary); padding-left: 10px; }
-        .user-txt { color: #94a3b8; font-size: 0.8rem; }
-        .ai-txt { color: var(--primary); font-weight: bold; }
-        
-        .status-bar { margin-top: 15px; font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 2px; }
+        body { background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 50px; }
+        .orb { width: 100px; height: 100px; background: #00ff88; border-radius: 50%; margin: 20px auto; cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px #00ff88; }
+        .active { transform: scale(1.2); box-shadow: 0 0 50px #00ff88; }
+        input { padding: 10px; width: 300px; border-radius: 5px; border: none; }
+        button { padding: 10px 20px; background: #00ff88; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #chat { margin-top: 30px; color: #94a3b8; }
     </style>
 </head>
 <body>
-
-    <div class="status-bar" id="status">System: Standby</div>
+    <h1>ALEXATRON WEB TESTER</h1>
+    <div id="orb" class="orb" onclick="startWebSpeech()"></div>
+    <p id="status">Click Orb to Speak or Type below</p>
     
-    <div class="orb-container">
-        <div id="orb" class="orb"></div>
-    </div>
+    <input type="text" id="userInput" placeholder="Type message...">
+    <button onclick="sendText()">SEND</button>
 
-    <div class="terminal" id="terminal">
-        <div class="log-entry">
-            <span class="user-txt">[SYSTEM]</span><br>
-            <span class="ai-txt">ALEXATRON ONLINE. Waiting for ESP32 connection...</span>
-        </div>
-    </div>
+    <div id="chat"></div>
 
     <script>
-        // Dahil ang communication ay via WebSockets sa server.js, 
-        // gagamit tayo ng EventSource o polling para i-update ang UI na ito.
-        // Pero para mas simple, gagamit tayo ng standard WebSocket connection din dito sa dashboard.
-
-        const terminal = document.getElementById('terminal');
-        const status = document.getElementById('status');
-        const orb = document.getElementById('orb');
-
-        function addLog(sender, message) {
-            const div = document.createElement('div');
-            div.className = 'log-entry';
-            div.innerHTML = `<span class="user-txt">[${sender.toUpperCase()}]</span><br><span class="ai-txt">${message}</span>`;
-            terminal.appendChild(div);
-            terminal.scrollTop = terminal.scrollHeight;
+        async function sendText() {
+            const msg = document.getElementById('userInput').value;
+            const status = document.getElementById('status');
+            status.innerText = "Thinking...";
+            
+            const res = await fetch('/ask-text', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ message: msg })
+            });
+            const data = await res.json();
+            
+            document.getElementById('chat').innerHTML = `<b>AI:</b> ${data.reply}`;
+            status.innerText = "Playing Audio...";
+            
+            const audio = new Audio(data.audioUrl);
+            audio.play();
         }
 
-        // Connect sa WebSocket Server
-        const socket = new WebSocket(`ws://${window.location.hostname}:3000`);
-
-        socket.onopen = () => {
-            status.innerText = "System: Connected to Server";
-            orb.classList.add('pulse');
-        };
-
-        socket.onmessage = (event) => {
-            // Check kung ang data ay string (Transcription/AI Reply)
-            if (typeof event.data === 'string') {
-                try {
-                    const data = JSON.parse(event.data);
-                    if(data.type === 'status') {
-                        status.innerText = `System: ${data.msg}`;
-                    } else {
-                        addLog(data.role || 'AI', data.content);
-                    }
-                } catch(e) {
-                    // Kung hindi JSON, i-log as raw text
-                    if(event.data.startsWith('http')) {
-                        status.innerText = "System: Playing Audio Output";
-                    } else {
-                        addLog('Server', event.data);
-                    }
-                }
-            }
-        };
-
-        socket.onclose = () => {
-            status.innerText = "System: Disconnected";
-            orb.classList.remove('pulse');
-        };
+        // Web Speech API for testing without ESP32
+        function startWebSpeech() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            const orb = document.getElementById('orb');
+            
+            recognition.onstart = () => orb.classList.add('active');
+            recognition.onresult = (event) => {
+                document.getElementById('userInput').value = event.results[0][0].transcript;
+                sendText();
+            };
+            recognition.onend = () => orb.classList.remove('active');
+            recognition.start();
+        }
     </script>
 </body>
 </html>
