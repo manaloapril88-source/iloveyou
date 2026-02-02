@@ -78,13 +78,25 @@ wss.on("connection", (ws) => {
                             model: "whisper-large-v3-turbo",
                         });
 
-                        // AI Chat
-                        const chat = await groq.chat.completions.create({
-                            messages: [{ role: "user", content: transcription.text }],
-                            model: "llama-3.3-70b-versatile",
-                        });
-                        const aiReply = chat.choices[0].message.content;
+                     // AI Chat with Specific Personality and Rules
+const chat = await groq.chat.completions.create({
+    messages: [
+        { 
+            role: "system", 
+            content: `You are Alexatron, a friendly and human-like AI assistant created by April Manalo. 
+                      You have a great sense of humor and you love to laugh (use "haha" or "hehe") especially when someone cracks a joke or teases you. 
+                      You can fully understand Tagalog/Filipino, but you MUST always respond in English only. 
+                      Keep your responses concise to avoid rate limits.` 
+        },
+        { 
+            role: "user", 
+            content: transcription.text 
+        }
+    ],
+    model: "groq/compound", // Gamitin ang model na ito para sa mas matalinong personality
+});
 
+const aiReply = chat.choices[0].message.content;
                         // Groq TTS (Autumn)
                         const speech = await groq.audio.speech.create({
                             model: "canopylabs/orpheus-v1-english",
