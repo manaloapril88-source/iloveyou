@@ -1,207 +1,164 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>ALEXATRON UNIVERSAL DASHBOARD</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALEXATRON AI - Web Control</title>
     <style>
+        :root { --neon: #00ff88; --dark: #0f172a; --panel: #1e293b; }
         body { 
-            background: #0f172a; color: #e2e8f0; font-family: 'Roboto Mono', monospace; 
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
-            min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;
+            background: var(--dark); color: white; font-family: 'Segoe UI', sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; margin: 0; padding: 20px;
         }
-        h1 { color: #00ff88; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px; }
+
+        /* The Orb / Mic Button */
+        .orb-wrapper { position: relative; cursor: pointer; margin-bottom: 20px; }
+        .orb {
+            width: 120px; height: 120px; border-radius: 50%;
+            background: radial-gradient(circle, var(--neon) 0%, #064e3b 100%);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .orb.active { transform: scale(1.1); box-shadow: 0 0 60px var(--neon); animation: pulse 1s infinite alternate; }
         
-        .status-area {
-            width: 100%; max-width: 600px; text-align: center; margin-bottom: 20px;
-        }
-        #main-status { font-size: 1.1em; font-weight: bold; color: #00d2ff; }
-        #sub-status { font-size: 0.8em; color: #64748b; }
+        @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; } }
 
-        .orb-container { 
-            position: relative; width: 150px; height: 150px; margin: 20px auto; 
-            display: flex; justify-content: center; align-items: center;
+        /* UI Elements */
+        .container { width: 100%; max-width: 500px; text-align: center; }
+        #status { color: var(--neon); font-weight: bold; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9em; }
+        
+        .chat-box { 
+            background: var(--panel); border-radius: 12px; padding: 20px; 
+            height: 250px; overflow-y: auto; text-align: left; margin-bottom: 20px;
+            border: 1px solid #334155; font-size: 0.95em;
         }
-        .orb { 
-            width: 100px; height: 100px; border-radius: 50%; 
-            background: radial-gradient(circle, #00ff88 0%, #064e3b 100%); 
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-            transition: all 0.3s ease-out; cursor: pointer;
-            border: 2px solid transparent;
-        }
-        .orb.listening { 
-            transform: scale(1.1); 
-            box-shadow: 0 0 40px #00ff88, 0 0 10px #00ff88 inset; 
-            animation: pulse-glow 1.5s infinite alternate; 
-        }
-        .orb.thinking {
-            animation: rotate-orb 2s infinite linear;
-            background: radial-gradient(circle, #00d2ff 0%, #0045c7 100%);
-            box-shadow: 0 0 40px #00d2ff;
-        }
-        .orb.speaking {
-            background: radial-gradient(circle, #ff0077 0%, #8b003a 100%);
-            box-shadow: 0 0 40px #ff0077;
-            animation: breathe-speak 1s infinite alternate;
-        }
+        .msg { margin-bottom: 15px; line-height: 1.4; border-left: 3px solid transparent; padding-left: 10px; }
+        .user-msg { border-color: #94a3b8; color: #cbd5e1; }
+        .ai-msg { border-color: var(--neon); color: white; font-weight: 500; }
 
-        @keyframes pulse-glow {
-            0% { transform: scale(1.0); opacity: 0.8; }
-            100% { transform: scale(1.1); opacity: 1; }
+        .input-group { display: flex; gap: 10px; }
+        input { 
+            flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155;
+            background: #0f172a; color: white; outline: none;
         }
-        @keyframes rotate-orb {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        input:focus { border-color: var(--neon); }
+        button { 
+            background: var(--neon); color: black; border: none; padding: 12px 20px;
+            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;
         }
-        @keyframes breathe-speak {
-            0% { transform: scale(1.0); }
-            100% { transform: scale(1.05); }
-        }
-
-        .input-area { margin: 20px 0; width: 100%; max-width: 600px; display: flex; }
-        .input-area input { 
-            flex-grow: 1; padding: 12px; border: 1px solid #374151; border-radius: 8px; 
-            background: #1f2937; color: #e2e8f0; margin-right: 10px; font-size: 1em;
-        }
-        .input-area button { 
-            padding: 12px 20px; background: #00ff88; color: #1f2937; border: none; 
-            border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1em;
-            transition: background-color 0.2s;
-        }
-        .input-area button:hover { background-color: #00e07a; }
-
-        .terminal {
-            width: 100%; max-width: 600px; height: 350px;
-            background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b;
-            border-radius: 10px; padding: 15px; overflow-y: auto;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-            text-align: left;
-            font-size: 0.9em;
-            line-height: 1.6;
-        }
-        .log-entry { margin-bottom: 10px; border-left: 3px solid #374151; padding-left: 10px; }
-        .log-entry.user { border-color: #94a3b8; }
-        .log-entry.alexatron { border-color: #00ff88; }
-        .log-entry.system { border-color: #00d2ff; }
-        .log-entry .label { font-weight: bold; margin-right: 8px; }
-        .log-entry .user-text { color: #94a3b8; }
-        .log-entry .alexatron-text { color: #00ff88; }
-        .log-entry .system-text { color: #00d2ff; }
-
-        /* Scrollbar styles */
-        .terminal::-webkit-scrollbar { width: 8px; }
-        .terminal::-webkit-scrollbar-track { background: #1f2937; border-radius: 10px; }
-        .terminal::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
-        .terminal::-webkit-scrollbar-thumb:hover { background: #64748b; }
-
+        button:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
-    <h1>ALEXATRON AI</h1>
 
-    <div class="status-area">
-        <p id="main-status">SYSTEM: Initializing...</p>
-        <p id="sub-status">Ready to connect.</p>
-    </div>
+    <div class="container">
+        <div id="status">ALEXATRON READY</div>
 
-    <div class="orb-container">
-        <div id="orb" class="orb"></div>
-    </div>
+        <div class="orb-wrapper" onclick="startMic()">
+            <div id="orb" class="orb"></div>
+        </div>
 
-    <div class="input-area">
-        <input type="text" id="userInput" placeholder="Type your message to Alexatron..." onkeydown="if(event.key==='Enter') sendText()">
-        <button onclick="sendText()">SEND</button>
-        <button onclick="startWebSpeech()">MIC</button>
-    </div>
+        <div class="chat-box" id="chat">
+            <div class="msg ai-msg">System: I'm listening. Click the orb to speak or type your command below.</div>
+        </div>
 
-    <div class="terminal" id="terminal-logs">
-        <div class="log-entry system">
-            <span class="label">SYSTEM</span>
-            <span class="system-text">Welcome to Alexatron Dashboard! Awaiting connections...</span>
+        <div class="input-group">
+            <input type="text" id="textInput" placeholder="Type a message..." onkeypress="handleKey(event)">
+            <button onclick="sendText()">SEND</button>
         </div>
     </div>
 
-    <audio id="audioPlayback" style="display:none;"></audio>
+    <audio id="ttsAudio"></audio>
 
     <script>
-        const mainStatus = document.getElementById('main-status');
-        const subStatus = document.getElementById('sub-status');
+        const statusText = document.getElementById('status');
+        const chatBox = document.getElementById('chat');
         const orb = document.getElementById('orb');
-        const userInput = document.getElementById('userInput');
-        const terminalLogs = document.getElementById('terminal-logs');
-        const audioPlayback = document.getElementById('audioPlayback');
-        
-        let recognition; // For Web Speech API
-        let isWebSpeechActive = false; // Flag to prevent multiple recognitions
-        let isSpeakingWeb = false; // Flag for web audio output
+        const audio = document.getElementById('ttsAudio');
 
-        function addLog(role, message) {
+        // 1. ADD MESSAGE TO LOGS
+        function addMsg(role, text) {
             const div = document.createElement('div');
-            div.classList.add('log-entry');
-            if (role === 'user') div.classList.add('user');
-            else if (role === 'ai') div.classList.add('alexatron');
-            else div.classList.add('system');
-
-            div.innerHTML = `<span class="label">${role.toUpperCase()}</span><span class="${role}-text">${message}</span>`;
-            terminalLogs.appendChild(div);
-            terminalLogs.scrollTop = terminalLogs.scrollHeight;
+            div.className = `msg ${role}-msg`;
+            div.innerHTML = `<strong>${role.toUpperCase()}:</strong> ${text}`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // --- WebSocket Connection for Live Logs and Status from Server ---
-        const ws_protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const socket = new WebSocket(`${ws_protocol}//${window.location.hostname}:3000`);
+        // 2. SEND TEXT TO SERVER
+        async function sendText() {
+            const input = document.getElementById('textInput');
+            const message = input.value.trim();
+            if (!message) return;
 
-        socket.onopen = () => {
-            mainStatus.innerText = "SYSTEM: Connected to Server";
-            subStatus.innerText = "Monitoring ESP32 and Web Tester...";
-            orb.classList.add('listening'); // Indicate server is ready to listen
-            addLog('system', 'Dashboard connected to server.');
-        };
+            addMsg('user', message);
+            input.value = '';
+            statusText.innerText = "THINKING...";
+            orb.classList.add('active');
 
-        socket.onmessage = (event) => {
             try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'user') {
-                    addLog('user', data.content);
-                    mainStatus.innerText = "USER: SPEAKING...";
-                } else if (data.type === 'ai') {
-                    addLog('ai', data.content);
-                    mainStatus.innerText = "ALEXATRON: RESPONDING...";
-                } else if (data.type === 'status') {
-                    mainStatus.innerText = data.msg;
+                const response = await fetch('/ask-text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                
+                const data = await response.json();
+                
+                if (data.reply) {
+                    addMsg('ai', data.reply);
+                    statusText.innerText = "ALEXATRON SPEAKING...";
+                    
+                    // PLAY AUDIO FROM SERVER
+                    audio.src = data.audioUrl;
+                    audio.play();
                 }
-            } catch (e) {
-                // Raw text or audio URL from ESP32 is not JSON
-                if (event.data.startsWith('http')) {
-                    playServerAudio(event.data);
-                } else {
-                    console.log("Raw WS Message:", event.data);
-                }
+            } catch (err) {
+                console.error("Error:", err);
+                statusText.innerText = "SERVER ERROR";
             }
+        }
+
+        // 3. MIC / SPEECH RECOGNITION (WEB TESTER)
+        function startMic() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Your browser doesn't support speech recognition.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                statusText.innerText = "LISTENING...";
+                orb.classList.add('active');
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('textInput').value = transcript;
+                sendText();
+            };
+
+            recognition.onend = () => {
+                orb.classList.remove('active');
+                if (statusText.innerText === "LISTENING...") {
+                    statusText.innerText = "ALEXATRON READY";
+                }
+            };
+
+            recognition.start();
+        }
+
+        // 4. AUDIO END EVENT
+        audio.onended = () => {
+            statusText.innerText = "ALEXATRON READY";
+            orb.classList.remove('active');
         };
 
-        socket.onclose = () => {
-            mainStatus.innerText = "SYSTEM: Server Disconnected";
-            subStatus.innerText = "Attempting to reconnect...";
-            orb.classList.remove('listening', 'thinking', 'speaking');
-            addLog('system', 'Server connection lost. Please restart Node.js server.');
-        };
-
-        socket.onerror = (error) => {
-            mainStatus.innerText = "SYSTEM: WebSocket Error";
-            subStatus.innerText = "Check server console.";
-            console.error("WebSocket Error:", error);
-        };
-
-        // --- Play Audio from Server (ESP32 response) ---
-        function playServerAudio(url) {
-            isSpeakingWeb = true;
-            orb.classList.remove('listening', 'thinking');
-            orb.classList.add('speaking');
-            mainStatus.innerText = "ALEXATRON: SPEAKING...";
-            audioPlayback.src = url;
-            audioPlayback.play().catch(e => {
-                console.error("Audio playback error:", e);
-                subStatus.innerText = "Audio blocked! User interaction needed.";
-            }).finally(() => {
-                // Ensure the flag is reset even on error
-                isSpeakingWeb = false;
-                orb
+        function handleKey(e) { if (e.key === 'Enter') sendText(); }
+    </script>
+</body>
+</html>
