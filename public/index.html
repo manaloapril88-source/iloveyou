@@ -3,185 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALEXATRON AI - PRO</title>
+    <title>ALEXATRON AI - Terminal</title>
     <style>
-        :root { --primary: #00ff88; --bg: #060b13; }
+        :root { --primary: #00ff88; --bg: #0b1120; --text: #e2e8f0; }
         body { 
-            font-family: 'Segoe UI', Tahoma, sans-serif; 
-            background: var(--bg); color: white; 
-            display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; 
-            height: 100vh; margin: 0; overflow: hidden;
+            font-family: 'Courier New', monospace; 
+            background: var(--bg); color: var(--text); 
+            display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; height: 100vh; margin: 0; overflow: hidden;
         }
-        
-        .orb { 
-            width: 160px; height: 160px; border-radius: 50%; 
-            background: radial-gradient(circle, var(--primary) 0%, #004d33 100%); 
-            box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer; position: relative;
-        }
-        .orb:active { transform: scale(0.9); }
-        .listening { transform: scale(1.2); box-shadow: 0 0 60px var(--primary); animation: glow 1.5s infinite; }
-        .thinking { filter: hue-rotate(200deg); animation: pulse 2s infinite linear; }
-        
-        @keyframes glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-        .controls { margin-top: 40px; text-align: center; background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px; width: 350px; border: 1px solid rgba(255,255,255,0.1); }
-        select { width: 100%; padding: 12px; border-radius: 8px; background: #111827; color: #fff; border: 1px solid #374151; margin-top: 10px; cursor: pointer; outline: none; }
-        .status { margin-bottom: 15px; font-size: 0.8rem; color: #94a3b8; letter-spacing: 3px; font-weight: bold; }
-        .transcript { margin-top: 25px; font-size: 1.1rem; color: #00ff88; text-align: center; max-width: 85%; min-height: 1.5em; font-weight: 300; }
-        .hint { font-size: 0.7rem; color: #4b5563; margin-top: 10px; }
+        /* Orb Animation */
+        .orb-container { position: relative; margin-bottom: 30px; }
+        .orb { 
+            width: 120px; height: 120px; border-radius: 50%; 
+            background: radial-gradient(circle, var(--primary) 0%, #064e3b 100%); 
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+            transition: all 0.5s ease;
+        }
+        .pulse { animation: pulse-animation 2s infinite; }
+        @keyframes pulse-animation {
+            0% { transform: scale(1); box-shadow: 0 0 20px var(--primary); }
+            50% { transform: scale(1.05); box-shadow: 0 0 50px var(--primary); }
+            100% { transform: scale(1); box-shadow: 0 0 20px var(--primary); }
+        }
+
+        /* Console Style */
+        .terminal {
+            width: 80%; max-width: 600px; height: 300px;
+            background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b;
+            border-radius: 10px; padding: 20px; overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .log-entry { margin-bottom: 10px; line-height: 1.4; border-left: 3px solid var(--primary); padding-left: 10px; }
+        .user-txt { color: #94a3b8; font-size: 0.8rem; }
+        .ai-txt { color: var(--primary); font-weight: bold; }
+        
+        .status-bar { margin-top: 15px; font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 2px; }
     </style>
 </head>
 <body>
 
-    <div class="status" id="status-text">INITIALIZING...</div>
-    <div id="visual-orb" class="orb" title="Click to Reset Mic"></div>
-    <div id="transcript-text" class="transcript">Click the orb to start</div>
-    <div class="hint">Click anywhere if sound doesn't play</div>
-
-    <div class="controls">
-        <label style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">TTS Engine Selection</label>
-        <select id="voice-select"><option>Detecting voices...</option></select>
+    <div class="status-bar" id="status">System: Standby</div>
+    
+    <div class="orb-container">
+        <div id="orb" class="orb"></div>
     </div>
 
-    <audio id="sfx-listen" src="listen.mp3"></audio>
+    <div class="terminal" id="terminal">
+        <div class="log-entry">
+            <span class="user-txt">[SYSTEM]</span><br>
+            <span class="ai-txt">ALEXATRON ONLINE. Waiting for ESP32 connection...</span>
+        </div>
+    </div>
 
     <script>
-        const orb = document.getElementById('visual-orb');
-        const statusText = document.getElementById('status-text');
-        const transcriptText = document.getElementById('transcript-text');
-        const voiceSelect = document.getElementById('voice-select');
-        const sfxListen = document.getElementById('sfx-listen');
+        // Dahil ang communication ay via WebSockets sa server.js, 
+        // gagamit tayo ng EventSource o polling para i-update ang UI na ito.
+        // Pero para mas simple, gagamit tayo ng standard WebSocket connection din dito sa dashboard.
 
-        let synth = window.speechSynthesis;
-        let voices = [];
-        let isBusy = false;
-        let recognition;
+        const terminal = document.getElementById('terminal');
+        const status = document.getElementById('status');
+        const orb = document.getElementById('orb');
 
-        // --- TTS SYSTEM ---
-        function loadVoices() {
-            voices = synth.getVoices();
-            if (voices.length === 0) return;
-            
-            const savedVoice = localStorage.getItem('preferredVoice');
-            voiceSelect.innerHTML = voices.map(v => 
-                `<option value="${v.name}" ${v.name === savedVoice ? 'selected' : ''}>${v.name}</option>`
-            ).join('');
-        }
-        if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = loadVoices;
-
-        function speak(text) {
-            synth.cancel(); 
-            isBusy = true;
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.voice = voices.find(v => v.name === voiceSelect.value);
-
-            utterance.onstart = () => {
-                orb.classList.remove('listening');
-                orb.classList.add('thinking');
-                statusText.innerText = "ALEXATRON SPEAKING";
-            };
-
-            utterance.onend = () => {
-                setTimeout(() => {
-                    isBusy = false;
-                    orb.classList.remove('thinking');
-                    statusText.innerText = "READY: SAY COMPUTER";
-                }, 1000);
-            };
-
-            synth.speak(utterance);
+        function addLog(sender, message) {
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            div.innerHTML = `<span class="user-txt">[${sender.toUpperCase()}]</span><br><span class="ai-txt">${message}</span>`;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
         }
 
-        voiceSelect.onchange = () => {
-            localStorage.setItem('preferredVoice', voiceSelect.value);
-            isBusy = false;
-            speak("Voice engine updated.");
+        // Connect sa WebSocket Server
+        const socket = new WebSocket(`ws://${window.location.hostname}:3000`);
+
+        socket.onopen = () => {
+            status.innerText = "System: Connected to Server";
+            orb.classList.add('pulse');
         };
 
-        // --- STT SYSTEM ---
-        function initRecognition() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
-
-            recognition.onresult = (event) => {
-                if (isBusy) return;
-
-                const fullTranscript = event.results[event.results.length - 1][0].transcript.toLowerCase();
-                const wakeWords = ["computer", "alexatron", "at"];
-                
-                let foundWakeWord = wakeWords.find(w => fullTranscript.includes(w));
-
-                if (foundWakeWord) {
-                    const parts = fullTranscript.split(foundWakeWord);
-                    const cmd = parts[parts.length - 1].trim();
-
-                    if (cmd.length > 1) {
-                        try { sfxListen.play(); } catch(e) {}
-                        transcriptText.innerText = `"${cmd}"`;
-                        processAI(cmd);
+        socket.onmessage = (event) => {
+            // Check kung ang data ay string (Transcription/AI Reply)
+            if (typeof event.data === 'string') {
+                try {
+                    const data = JSON.parse(event.data);
+                    if(data.type === 'status') {
+                        status.innerText = `System: ${data.msg}`;
                     } else {
-                        try { sfxListen.play(); } catch(e) {}
-                        statusText.innerText = "YES? LISTENING...";
-                        orb.classList.add('listening');
+                        addLog(data.role || 'AI', data.content);
+                    }
+                } catch(e) {
+                    // Kung hindi JSON, i-log as raw text
+                    if(event.data.startsWith('http')) {
+                        status.innerText = "System: Playing Audio Output";
+                    } else {
+                        addLog('Server', event.data);
                     }
                 }
-            };
-
-            recognition.onerror = (e) => {
-                console.error("Mic Error:", e.error);
-                isBusy = false;
-                if(e.error === 'no-speech') return; // Ignore silent errors
-                statusText.innerText = "MIC ERROR - CLICK ORB";
-            };
-
-            recognition.onend = () => { if (!isBusy) recognition.start(); };
-            recognition.start();
-            statusText.innerText = "READY: SAY COMPUTER";
-            transcriptText.innerText = "Listening for wake word...";
-        }
-
-        async function processAI(message) {
-            isBusy = true;
-            orb.classList.remove('listening');
-            orb.classList.add('thinking');
-            statusText.innerText = "THINKING...";
-
-            try {
-                const res = await fetch('/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
-                });
-                if (!res.ok) throw new Error("Server Error");
-                const data = await res.json();
-                speak(data.reply);
-            } catch (err) {
-                console.error(err);
-                statusText.innerText = "ERROR - CLICK ORB";
-                isBusy = false;
-                orb.classList.remove('thinking');
             }
-        }
-
-        // Orb Click = Force Reset
-        orb.onclick = () => {
-            isBusy = false;
-            synth.cancel();
-            try { recognition.stop(); } catch(e) {}
-            setTimeout(() => {
-                initRecognition();
-            }, 300);
         };
 
-        window.onload = loadVoices;
+        socket.onclose = () => {
+            status.innerText = "System: Disconnected";
+            orb.classList.remove('pulse');
+        };
     </script>
 </body>
 </html>
