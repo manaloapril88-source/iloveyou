@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Alexatron Web Flasher</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 2rem; background: #f0f4f8; color: #333; }
+    h1 { color: #1e88e5; }
+    button { padding: 1rem 2rem; margin: 1rem; font-size: 1.2rem; cursor: pointer; border: none; border-radius: 8px; }
+    #connect { background: #4caf50; color: white; }
+    #flash { background: #ff9800; color: white; }
+    #status { margin-top: 2rem; font-size: 1.1rem; white-space: pre-wrap; }
+    progress { width: 80%; height: 20px; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Alexatron Voice AI Web Flasher</h1>
+  <p>Connect your ESP32-C3 via USB. Hold the BOOT button while plugging if needed, then click Connect.</p>
+
+  <button id="connect">Connect Device</button>
+  <button id="flash" disabled>Flash Firmware</button>
+
+  <div id="status">Status: Waiting...</div>
+  <progress id="progress" value="0" max="100" style="display:none;"></progress>
+
+  <script type="module">
+    import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.5.6/dist/web/index.js';
+
+    const connectBtn = document.getElementById('connect');
+    const flashBtn = document.getElementById('flash');
+    const status = document.getElementById('status');
+    const progress = document.getElementById('progress');
+
+    let device;
+    let transport;
+    let loader;
+
+    connectBtn.onclick = async () => {
+      try {
+        status.textContent = 'Requesting serial port...';
+        device = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x303a }] }); // Espressif VID
+        transport = new Transport(device);
+        loader = new ESPLoader(transport, console, false);
+
+        status.textContent = 'Connecting...';
+        await loader.main_fn(); // detect chip, etc.
+        status.textContent = `Connected! Chip: ${loader.chip}, MAC: ${loader.mac}`;
+        flashBtn.disabled = false;
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+      }
+    };
+
+    flashBtn.onclick = async () => {
+      if (!loader) return;
+
+      status.textContent = 'Downloading firmware...';
+      progress.style.display = 'block';
+      progress.value = 0;
+
+      try {
+        const fwUrl = '/firmware/alexatron.bin'; // relative to your Render domain
+        const resp = await fetch(fwUrl);
+        if (!resp.ok) throw new Error('Firmware not found');
+
+        const firmware = await resp.arrayBuffer();
+        status.textContent = 'Erasing & flashing... (do not unplug)';
+
+        await loader.write_flash({
+          fileArray: [{ data: new Uint8Array(firmware), address: 0x0 }], // adjust offset if partitioned
+          reportProgress: (fileIndex, written, total) => {
+            progress.value = (written / total) * 100;
+          }
+        });
+
+        status.textContent = 'Flash successful! Rebooting device...';
+        await loader.hard_reset();
+      } catch (err) {
+        status.textContent = `Flash failed: ${err.message}`;
+      } finally {
+        progress.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>
