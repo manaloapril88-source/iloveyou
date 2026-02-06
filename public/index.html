@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alexatron AI</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .orb { width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, #38bdf8 0%, #1e3a8a 100%); box-shadow: 0 0 30px #38bdf8; transition: all 0.3s ease; margin-bottom: 20px; }
+        .orb.listening { transform: scale(1.1); box-shadow: 0 0 60px #38bdf8; animation: pulse 1.5s infinite; }
+        .orb.thinking { background: radial-gradient(circle, #fbbf24 0%, #92400e 100%); animation: rotate 2s infinite linear; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        .status { font-size: 1.2rem; font-weight: bold; color: #94a3b8; margin-top: 10px; }
+        .transcript { margin-top: 20px; color: #38bdf8; font-style: italic; max-width: 80%; text-align: center; }
+        .wake-words { font-size: 0.8rem; color: #475569; position: absolute; bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="visual-orb" class="orb"></div>
+    <div id="status-text" class="status">Waiting for Wake Word...</div>
+    <div id="transcript-text" class="transcript"></div>
+
+    <div class="wake-words">Wake words: "Computer", "Alexatron", or "At"</div>
+
+    <script>
+        const orb = document.getElementById('visual-orb');
+        const statusText = document.getElementById('status-text');
+        const transcriptText = document.getElementById('transcript-text');
+
+        // Speech Recognition Setup
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US'; // Pwede mong gawing 'fil-PH' kung gusto mo Tagalog lang
+
+        const wakeWords = ["computer", "alexatron", "at"];
+        let isSpeaking = false;
+
+        recognition.onstart = () => { console.log("Recognition started..."); };
+
+        recognition.onresult = async (event) => {
+            const lastResultIndex = event.results.length - 1;
+            const text = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
+            
+            transcriptText.innerText = `You: "${text}"`;
+
+            // Check if AI is currently speaking to avoid self-triggering
+            if (isSpeaking) return;
+
+            // Wake word detection
+            const triggerFound = wakeWords.some(word => text.includes(word));
+
+            if (triggerFound) {
+                const command = text.split(/computer|alexatron|at/).pop().trim();
+                
+                if (command.length > 1) {
+                    processAI(command);
+                } else {
+                    speak("Yes? I am listening.");
+                    statusText.innerText = "Listening for command...";
+                    orb.classList.add('listening');
+                }
+            }
+        };
+
+        recognition.onerror = (err) => {
+            console.error("Speech Error:", err);
+            restartRecognition();
+        };
+
+        recognition.onend = () => {
+            restartRecognition();
+        };
+
+        function restartRecognition() {
+            setTimeout(() => {
+                try { recognition.start(); } catch(e) {}
+            }, 500);
+        }
+
+        async function processAI(message) {
+            orb.classList.remove('listening');
+            orb.classList.add('thinking');
+            statusText.innerText = "Thinking...";
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await response.json();
+                
+                orb.classList.remove('thinking');
+                speak(data.reply);
+            } catch (err) {
+                statusText.innerText = "Error connecting to brain.";
+                orb.classList.remove('thinking');
+            }
+        }
+
+        function speak(text) {
+            isSpeaking = true;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onend = () => {
+                isSpeaking = false;
+                statusText.innerText = "Waiting for Wake Word...";
+                orb.classList.remove('listening', 'thinking');
+            };
+            
+            // Optional: Choose a specific voice
+            const voices = window.speechSynthesis.getVoices();
+            utterance.voice = voices.find(v => v.name.includes("Google")) || voices[0];
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Start everything
+        window.onload = () => {
+            recognition.start();
+            // Load voices
+            window.speechSynthesis.getVoices();
+        };
+    </script>
+</body>
+</html>
