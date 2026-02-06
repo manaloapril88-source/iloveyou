@@ -1,128 +1,90 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alexatron AI</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .orb { width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, #38bdf8 0%, #1e3a8a 100%); box-shadow: 0 0 30px #38bdf8; transition: all 0.3s ease; margin-bottom: 20px; }
-        .orb.listening { transform: scale(1.1); box-shadow: 0 0 60px #38bdf8; animation: pulse 1.5s infinite; }
-        .orb.thinking { background: radial-gradient(circle, #fbbf24 0%, #92400e 100%); animation: rotate 2s infinite linear; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
-        .status { font-size: 1.2rem; font-weight: bold; color: #94a3b8; margin-top: 10px; }
-        .transcript { margin-top: 20px; color: #38bdf8; font-style: italic; max-width: 80%; text-align: center; }
-        .wake-words { font-size: 0.8rem; color: #475569; position: absolute; bottom: 20px; }
-    </style>
+    <title>Convo AI - ChatGPT-like</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Google Sign-In -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen">
+        <div class="login-container">
+            <div class="logo">
+                <span class="ai-icon">🤖</span>
+                <h1>Convo AI</h1>
+            </div>
+            <p>Mag-sign in gamit ang Google account mo para magsimula.<br>Ang AI ay makikilala ka sa pangalan mo.</p>
+            <div id="g_id_onload"
+                 data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+                 data-callback="handleCredentialResponse"
+                 data-auto_select="true"></div>
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-size="large"
+                 data-theme="filled_blue"
+                 data-text="sign_in_with"
+                 data-shape="rectangular"
+                 data-logo_alignment="left"></div>
+            <p class="note">Tandaan: Kailangan mo ng Google Client ID. Tingnan ang setup sa ibaba.</p>
+        </div>
+    </div>
 
-    <div id="visual-orb" class="orb"></div>
-    <div id="status-text" class="status">Waiting for Wake Word...</div>
-    <div id="transcript-text" class="transcript"></div>
+    <!-- Main App -->
+    <div id="app" class="hidden screen">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button id="new-chat-btn" class="new-chat-btn">
+                    <span>+</span> Bagong Usapan
+                </button>
+            </div>
+            <div id="chat-list" class="chat-list"></div>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div id="user-avatar" class="avatar">👤</div>
+                    <div>
+                        <div id="user-display-name" class="name"></div>
+                        <div id="user-email" class="email"></div>
+                    </div>
+                </div>
+                <button id="logout-btn" class="logout-btn">Sign out</button>
+            </div>
+        </div>
 
-    <div class="wake-words">Wake words: "Computer", "Alexatron", or "At"</div>
+        <!-- Chat Area -->
+        <div class="main-content">
+            <header class="chat-header">
+                <div class="chat-title-container">
+                    <h2 id="current-chat-title">Bagong Usapan</h2>
+                </div>
+                <div class="header-actions">
+                    <button id="clear-chat-btn" class="icon-btn" title="I-clear ang usapan">🗑️</button>
+                </div>
+            </header>
 
-    <script>
-        const orb = document.getElementById('visual-orb');
-        const statusText = document.getElementById('status-text');
-        const transcriptText = document.getElementById('transcript-text');
+            <!-- Messages -->
+            <div id="chat-window" class="chat-window">
+                <!-- Messages will be injected here via JS -->
+            </div>
 
-        // Speech Recognition Setup
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US'; // Pwede mong gawing 'fil-PH' kung gusto mo Tagalog lang
+            <!-- Input Area -->
+            <div class="input-area">
+                <button id="voice-input-btn" class="voice-btn" title="Mag-record gamit ang voice">
+                    🎤
+                </button>
+                <div class="input-wrapper">
+                    <input type="text" id="message-input" placeholder="I-type ang mensahe mo... (o gamitin ang voice)">
+                    <button id="send-btn" class="send-btn">
+                        ➤
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        const wakeWords = ["computer", "alexatron", "at"];
-        let isSpeaking = false;
-
-        recognition.onstart = () => { console.log("Recognition started..."); };
-
-        recognition.onresult = async (event) => {
-            const lastResultIndex = event.results.length - 1;
-            const text = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
-            
-            transcriptText.innerText = `You: "${text}"`;
-
-            // Check if AI is currently speaking to avoid self-triggering
-            if (isSpeaking) return;
-
-            // Wake word detection
-            const triggerFound = wakeWords.some(word => text.includes(word));
-
-            if (triggerFound) {
-                const command = text.split(/computer|alexatron|at/).pop().trim();
-                
-                if (command.length > 1) {
-                    processAI(command);
-                } else {
-                    speak("Yes? I am listening.");
-                    statusText.innerText = "Listening for command...";
-                    orb.classList.add('listening');
-                }
-            }
-        };
-
-        recognition.onerror = (err) => {
-            console.error("Speech Error:", err);
-            restartRecognition();
-        };
-
-        recognition.onend = () => {
-            restartRecognition();
-        };
-
-        function restartRecognition() {
-            setTimeout(() => {
-                try { recognition.start(); } catch(e) {}
-            }, 500);
-        }
-
-        async function processAI(message) {
-            orb.classList.remove('listening');
-            orb.classList.add('thinking');
-            statusText.innerText = "Thinking...";
-
-            try {
-                const response = await fetch('/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
-                });
-                const data = await response.json();
-                
-                orb.classList.remove('thinking');
-                speak(data.reply);
-            } catch (err) {
-                statusText.innerText = "Error connecting to brain.";
-                orb.classList.remove('thinking');
-            }
-        }
-
-        function speak(text) {
-            isSpeaking = true;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onend = () => {
-                isSpeaking = false;
-                statusText.innerText = "Waiting for Wake Word...";
-                orb.classList.remove('listening', 'thinking');
-            };
-            
-            // Optional: Choose a specific voice
-            const voices = window.speechSynthesis.getVoices();
-            utterance.voice = voices.find(v => v.name.includes("Google")) || voices[0];
-            
-            window.speechSynthesis.speak(utterance);
-        }
-
-        // Start everything
-        window.onload = () => {
-            recognition.start();
-            // Load voices
-            window.speechSynthesis.getVoices();
-        };
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
