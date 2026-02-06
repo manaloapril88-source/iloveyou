@@ -1,171 +1,147 @@
-const WebSocket = require('ws');
-const http = require('http');
-const axios = require('axios');
-const FormData = require('form-data');
-const fs = require('fs');
-const path = require('path');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const textToSpeech = new (require('@google-cloud/text-to-speech').TextToSpeechClient)();
+const speech = require('@google-cloud/speech').v1;  // Use v1 (stable & no enum issues)
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY || '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';
+const app = express();
 
-if (!GROQ_API_KEY) {
-  console.error('GROQ_API_KEY missing!');
-  process.exit(1);
-}
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-const tempRawIn  = path.join(__dirname, 'temp_raw.pcm');
-const tempWavIn  = path.join(__dirname, 'temp_in.wav');
-const tempOut    = path.join(__dirname, 'temp_out.wav');
+const upload = multer({ dest: "/tmp/" });
 
-const server = http.createServer((req, res) => {
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('OK');
-    return;
+// ──────────────────────────────────────────────
+// FIXED DUAL-MODE ENDPOINT WITH GOOGLE STT + TTS
+// ──────────────────────────────────────────────
+app.post("/alexatron-voice", upload.single("audio"), async (req, res) => {
+  console.log("───────────────────────────────");
+  console.log("Incoming request at:", new Date().toISOString());
+  console.log("From User-Agent:", req.headers['user-agent'] || "unknown");
+
+  if (!req.file) {
+    console.log("→ No file received");
+    return res.status(400).json({ error: "No audio uploaded" });
   }
-  res.writeHead(404);
-  res.end('Not found');
-});
 
-const wss = new WebSocket.Server({ server });
+  console.log("→ File received:", req.file.originalname, req.file.size, "bytes");
 
-wss.on('connection', (ws, req) => {
-  console.log(`ESP32 connected from ${req.socket.remoteAddress}`);
+  try {
+    // 1. GOOGLE STT (Speech-to-Text) - FIXED VERSION
+    console.log("→ Starting Google STT...");
+    const client = new speech.SpeechClient();
 
-  ws.isAlive = true;
-  ws.on('pong', () => { ws.isAlive = true; });
+    const audioBytes = fs.readFileSync(req.file.path);
+    const audio = {
+      content: audioBytes.toString('base64')
+    };
 
-  ws.on('message', async (message) => {
-    // Keep-alive from ESP32
-    if (typeof message === 'string' && message === 'ping') {
-      ws.send('pong');
-      return;
+    const config = {
+      encoding: 'LINEAR16',  // String literal (no enum) - works in v1
+      sampleRateHertz: 16000,
+      languageCode: 'en-US',
+      model: 'latest_long',  // or 'default' or 'command_and_search'
+    };
+
+    const request = {
+      audio: audio,
+      config: config,
+    };
+
+    const [response] = await client.recognize(request);
+    let userText = '';
+    if (response.results && response.results.length > 0) {
+      userText = response.results
+        .map(result => result.alternatives[0].transcript)
+        .join('\n')
+        .trim();
     }
 
-    // Audio binary from ESP32 (raw 16-bit PCM mono 16kHz)
-    if (Buffer.isBuffer(message)) {
-      console.log(`Received audio binary (${message.length} bytes)`);
+    console.log("[STT] → User said:", userText || "(empty transcription)");
 
-      try {
-        // Save raw PCM
-        fs.writeFileSync(tempRawIn, message);
-
-        // Add WAV header (Whisper needs proper format)
-        const wav = new WaveFile();
-        wav.fromScratch(1, 16000, '16', message); // mono, 16kHz, 16-bit
-        wav.toBitDepth('16');
-        fs.writeFileSync(tempWavIn, wav.toBuffer());
-
-        // STT
-        const sttForm = new FormData();
-        sttForm.append('model', 'whisper-large-v3-turbo');
-        sttForm.append('file', fs.createReadStream(tempWavIn));
-        sttForm.append('temperature', '0');
-        sttForm.append('response_format', 'verbose_json');
-
-        const sttRes = await axios.post(
-          'https://api.groq.com/openai/v1/audio/transcriptions',
-          sttForm,
-          {
-            headers: {
-              ...sttForm.getHeaders(),
-              Authorization: `Bearer ${GROQ_API_KEY}`,
-            },
-          }
-        );
-
-        const userText = sttRes.data.text?.trim() || '';
-        console.log('User said:', userText);
-
-        if (!userText) throw new Error('No speech detected');
-
-        // LLM (streaming)
-        let aiText = '';
-        const llmRes = await axios.post(
-          'https://api.groq.com/openai/v1/chat/completions',
-          {
-            messages: [{ role: 'user', content: userText }],
-            model: 'openai/gpt-oss-120b',  // o 'llama-3.1-70b-versatile' kung gusto mo mas mabilis
-            temperature: 1,
-            max_tokens: 8192,
-            stream: true,
-          },
-          {
-            headers: { Authorization: `Bearer ${GROQ_API_KEY}` },
-            responseType: 'stream',
-          }
-        );
-
-        llmRes.data.on('data', (chunk) => {
-          const lines = chunk.toString().split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.choices?.[0]?.delta?.content) {
-                  aiText += data.choices[0].delta.content;
-                }
-              } catch {}
-            }
-          }
-        });
-
-        await new Promise((r) => llmRes.data.on('end', r));
-        aiText = aiText.trim();
-        console.log('AI reply:', aiText);
-
-        // TTS
-        const ttsRes = await axios.post(
-          'https://api.groq.com/openai/v1/audio/speech',
-          {
-            model: 'canopylabs/orpheus-v1-english',
-            voice: 'autumn',
-            input: aiText,
-            response_format: 'wav',
-          },
-          {
-            headers: { Authorization: `Bearer ${GROQ_API_KEY}` },
-            responseType: 'arraybuffer',
-          }
-        );
-
-        fs.writeFileSync(tempOut, ttsRes.data);
-
-        // Send back to ESP32
-        ws.send(JSON.stringify({ type: 'text', content: aiText }));
-        ws.send(fs.readFileSync(tempOut));
-
-        console.log('Response sent');
-      } catch (err) {
-        console.error('Processing error:', err.message);
-        ws.send(JSON.stringify({ type: 'error', message: err.message || 'Server error' }));
-      } finally {
-        // Cleanup
-        [tempRawIn, tempWavIn, tempOut].forEach((f) => {
-          if (fs.existsSync(f)) fs.unlinkSync(f);
-        });
-      }
+    if (!userText) {
+      console.log("→ Empty transcription - returning error");
+      return res.status(400).json({ error: "No speech detected in audio" });
     }
-  });
 
-  ws.on('close', () => console.log('ESP32 disconnected'));
+    // 2. Groq LLM (Alexatron reply)
+    console.log("→ Generating reply with Groq...");
+    const groq = new (require("groq-sdk").Groq)({ apiKey: process.env.GROQ_API_KEY });
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `You are Alexatron, a smart assistant created by April Manalo. The user may call you computer or ai as wakeword.
+Respond in English ONLY. Be professional, witty, and concise (maximum 2 sentences).`
+        },
+        { role: "user", content: userText }
+      ],
+      model: "llama-3.1-70b-versatile",
+      temperature: 0.65,
+      max_tokens: 140
+    });
+
+    const reply = completion.choices[0]?.message?.content?.trim() || "Sorry, I didn't catch that.";
+    console.log("[LLM] → Reply:", reply);
+
+    // 3. Google TTS → MP3
+    console.log("→ Generating TTS MP3...");
+    const ttsRequest = {
+      input: { text: reply },
+      voice: { languageCode: "en-US", name: "en-US-Neural2-F" },
+      audioConfig: { audioEncoding: "MP3", speakingRate: 1.08, pitch: -1.5 }
+    };
+
+    const [ttsResponse] = await textToSpeech.synthesizeSpeech(ttsRequest);
+    console.log("[TTS] → MP3 generated successfully, size:", ttsResponse.audioContent.length, "bytes");
+
+    // Dual mode: raw MP3 for ESP32, JSON for browser/curl
+    const userAgent = req.headers['user-agent'] || "";
+    const isLikelyESP32 = userAgent.includes("ESP32") || userAgent.includes("HTTPClient") || userAgent.includes("Arduino");
+
+    if (isLikelyESP32) {
+      console.log("→ ESP32 detected → sending RAW MP3");
+      res.set({
+        "Content-Type": "audio/mpeg",
+        "Content-Length": ttsResponse.audioContent.length,
+        "Cache-Control": "no-cache"
+      });
+      res.send(ttsResponse.audioContent);
+    } else {
+      console.log("→ Browser/Postman detected → sending JSON + base64");
+      const audioBase64 = ttsResponse.audioContent.toString('base64');
+      res.json({
+        success: true,
+        stt: userText,
+        reply: reply,
+        audioBase64: audioBase64,
+        audioLengthBytes: ttsResponse.audioContent.length
+      });
+    }
+  } catch (err) {
+    console.error("→ PROCESSING ERROR:", err.message);
+    console.error("Full error stack:", err.stack || err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  } finally {
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+      console.log("→ Temp audio file deleted");
+    }
+    console.log("Request completed ───────────────────────────────");
+  }
 });
 
-// Keep-alive ping every 30s
-setInterval(() => {
-  wss.clients.forEach((ws) => {
-    if (!ws.isAlive) return ws.terminate();
-    ws.isAlive = false;
-    ws.ping();
-  });
-}, 30000);
-
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+// Root for UI
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received - shutting down');
-  server.close(() => process.exit(0));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Alexatron server running on port ${PORT}`);
 });
