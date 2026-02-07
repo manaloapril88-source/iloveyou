@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "...",
   "main": "server.js",
-  // walang "type": "module" dito
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
@@ -11,7 +10,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.0",
-    "groq-sdk": "^0.37.0"   // latest version na 'to, okay na
+    "groq-sdk": "^0.37.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
