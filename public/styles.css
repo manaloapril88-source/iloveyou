@@ -372,3 +372,56 @@ body {
     background: #333;
     border-radius: 20px;
 }
+
+.auth-tabs {
+    display: flex;
+    margin: 20px 0 30px;
+    border-bottom: 1px solid #333;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.tab-btn.active {
+    color: #00d4ff;
+    border-bottom: 3px solid #00d4ff;
+    font-weight: 600;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.auth-form input,
+.auth-form select {
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid #444;
+    background: #1e1e1e;
+    color: white;
+    font-size: 15px;
+}
+
+.auth-btn {
+    background: #00d4ff;
+    color: black;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.auth-form.hidden { display: none; }
+
+.small { font-size: 13px; color: #aaa; margin-top: 4px; }
