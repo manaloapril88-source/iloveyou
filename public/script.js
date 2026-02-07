@@ -1,58 +1,105 @@
 // script.js
-// =================== CONFIG ===================
-const GROQ_MODEL = "openai/gpt-oss-120b"; // Gamitin ang model na binigay mo
-// ==============================================
+const GROQ_API_KEY = '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';
+const GROQ_MODEL = "llama-3.1-70b-versatile"; // mas stable na model, pwede mo palitan
 
 let currentChatId = null;
 let chats = [];
-let userName = '';
-let userEmail = '';
+let currentUser = null;
 let recognition = null;
 let isRecording = false;
 
-// Google Sign-In handler
-function handleCredentialResponse(response) {
-    const responsePayload = parseJwt(response.credential);
-    
-    userName = responsePayload.name;
-    userEmail = responsePayload.email;
-    
-    // Save to localStorage
-    localStorage.setItem('userName', userName);
-    localStorage.setItem('userEmail', userEmail);
-    
-    // Hide login, show app
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    
-    // Init the app
-    initApp();
-}
-
-function parseJwt(token) {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    return JSON.parse(jsonPayload);
-}
-
-// Load chats from localStorage
-function loadChats() {
-    const savedChats = localStorage.getItem('convoChats');
-    chats = savedChats ? JSON.parse(savedChats) : [];
-    if (chats.length === 0) {
-        createNewChat();
+// Simple hash para sa password (local lang naman)
+function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash;
     }
+    return hash.toString(36);
 }
 
-// Save chats
-function saveChats() {
-    localStorage.setItem('convoChats', JSON.stringify(chats));
-}
+// Tabs switch
+document.getElementById('show-register').addEventListener('click', () => {
+    document.getElementById('register-form').classList.remove('hidden');
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('show-register').classList.add('active');
+    document.getElementById('show-login').classList.remove('active');
+});
 
-// Create new chat
+document.getElementById('show-login').addEventListener('click', () => {
+    document.getElementById('login-form').classList.remove('hidden');
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('show-login').classList.add('active');
+    document.getElementById('show-register').classList.remove('active');
+});
+
+// Register
+document.getElementById('register-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('reg-name').value.trim();
+    const age = parseInt(document.getElementById('reg-age').value);
+    const gender = document.getElementById('reg-gender').value;
+    const password = document.getElementById('reg-password').value;
+
+    if (!name || isNaN(age) || !gender || !password) {
+        alert('Lahat ng field kailangan punan!');
+        return;
+    }
+
+    let users = JSON.parse(localStorage.getItem('convoUsers') || '{}');
+
+    if (users[name]) {
+        alert('May ganitong pangalan na! Mag-log in ka na lang.');
+        return;
+    }
+
+    users[name] = {
+        passwordHash: simpleHash(password),
+        age: age,
+        gender: gender
+    };
+    localStorage.setItem('convoUsers', JSON.stringify(users));
+
+    currentUser = { name, age, gender };
+    localStorage.setItem('currentConvoUser', JSON.stringify(currentUser));
+
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    initApp();
+});
+
+// Login
+document.getElementById('login-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('login-name').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    const users = JSON.parse(localStorage.getItem('convoUsers') || '{}');
+    const user = users[name];
+
+    if (!user || user.passwordHash !== simpleHash(password)) {
+        alert('Mali ang pangalan o password!');
+        return;
+    }
+
+    currentUser = { name, age: user.age, gender: user.gender };
+    localStorage.setItem('currentConvoUser', JSON.stringify(currentUser));
+
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    initApp();
+});
+
+// Logout
+document.getElementById('logout-btn').addEventListener('click', () => {
+    if (confirm('Mag-log out? Mawawala ang session mo.')) {
+        localStorage.removeItem('currentConvoUser');
+        location.reload();
+    }
+});
+
+// Chat functions
 function createNewChat() {
     const newChat = {
         id: Date.now().toString(),
@@ -66,247 +113,198 @@ function createNewChat() {
     renderCurrentChat();
 }
 
-// Render chat list
 function renderChatList() {
-    const chatListEl = document.getElementById('chat-list');
-    chatListEl.innerHTML = '';
-    
+    const list = document.getElementById('chat-list');
+    list.innerHTML = '';
     chats.forEach(chat => {
-        const item = document.createElement('div');
-        item.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
-        item.innerHTML = `
+        const div = document.createElement('div');
+        div.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
+        div.innerHTML = `
             <span>${chat.title}</span>
-            <button class="delete-btn" onclick="deleteChat('${chat.id}'); event.stopImmediatePropagation();">🗑️</button>
+            <button class="delete-btn">🗑️</button>
         `;
-        item.onclick = () => {
+        div.querySelector('.delete-btn').onclick = (e) => {
+            e.stopPropagation();
+            if (confirm('I-delete ang usapang ito?')) {
+                chats = chats.filter(c => c.id !== chat.id);
+                saveChats();
+                if (currentChatId === chat.id) createNewChat();
+                renderChatList();
+            }
+        };
+        div.onclick = () => {
             currentChatId = chat.id;
             renderChatList();
             renderCurrentChat();
         };
-        chatListEl.appendChild(item);
+        list.appendChild(div);
     });
 }
 
-// Delete chat
-window.deleteChat = function(chatId) {
-    if (confirm('Sigurado ka bang gusto mong i-delete itong usapan?')) {
-        chats = chats.filter(c => c.id !== chatId);
-        saveChats();
-        if (currentChatId === chatId) {
-            currentChatId = chats[0] ? chats[0].id : null;
-        }
-        renderChatList();
-        renderCurrentChat();
-    }
-};
-
-// Render current chat messages
 function renderCurrentChat() {
     const chat = chats.find(c => c.id === currentChatId);
     if (!chat) return;
-    
+
     document.getElementById('current-chat-title').textContent = chat.title;
-    
-    const chatWindow = document.getElementById('chat-window');
-    chatWindow.innerHTML = '';
-    
+
+    const window = document.getElementById('chat-window');
+    window.innerHTML = '';
+
     chat.messages.forEach(msg => {
-        const msgEl = document.createElement('div');
-        msgEl.className = `message ${msg.role}`;
-        msgEl.innerHTML = `<p>${msg.content}</p>`;
-        chatWindow.appendChild(msgEl);
+        const div = document.createElement('div');
+        div.className = `message ${msg.role}`;
+        div.innerHTML = `<p>${msg.content.replace(/\n/g, '<br>')}</p>`;
+        window.appendChild(div);
     });
-    
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+    window.scrollTop = window.scrollHeight;
 }
 
-// Send message
 async function sendMessage(text) {
     if (!text.trim()) return;
-    
+
     const chat = chats.find(c => c.id === currentChatId);
-    if (!chat) return;
-    
-    // Add user message
     chat.messages.push({ role: 'user', content: text });
     renderCurrentChat();
     saveChats();
-    
-    // Show loading
-    const loadingEl = document.createElement('div');
-    loadingEl.className = 'message assistant';
-    loadingEl.innerHTML = `<p><em>Iniisip ko...</em></p>`;
-    const chatWindow = document.getElementById('chat-window');
-    chatWindow.appendChild(loadingEl);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-    
-    // Prepare messages for Groq (with system prompt)
+
+    const loading = document.createElement('div');
+    loading.className = 'message assistant';
+    loading.innerHTML = '<p><em>Iniisip ko...</em></p>';
+    document.getElementById('chat-window').appendChild(loading);
+    loading.scrollIntoView();
+
     const systemPrompt = {
         role: 'system',
-        content: `Ikaw ay isang friendly at matulungin na conversational AI na tinatawag na Convo AI. Ang pangalan ng user ay ${userName}. Mag-usap tayo nang natural sa Filipino o English depende sa user. Huwag kang magbigay ng medical o legal advice.`
+        content: `Ikaw ay friendly na AI na tinatawag na Convo AI. Ang user ay si ${currentUser.name}, ${currentUser.age} taong gulang, ${currentUser.gender}. Mag-usap kayo nang natural sa Filipino o English.`
     };
-    
-    const apiMessages = [systemPrompt, ...chat.messages];
-    
+
     try {
         const response = await fetch('/api/chat', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ messages: apiMessages })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: [systemPrompt, ...chat.messages]
+            })
         });
-        
+
         const data = await response.json();
-        
-        // Remove loading
-        chatWindow.removeChild(loadingEl);
-        
-        // Add AI response
+        document.getElementById('chat-window').removeChild(loading);
+
         chat.messages.push({ role: 'assistant', content: data.content });
         renderCurrentChat();
         saveChats();
-        
-        // Speak the response
-        speakResponse(data.content);
-        
-        // Update title if it's the first response
+
+        speak(data.content);
+
         if (chat.messages.length === 2) {
-            chat.title = text.length > 35 ? text.substring(0, 32) + '...' : text;
+            chat.title = text.substring(0, 30) + (text.length > 30 ? '...' : '');
             renderChatList();
         }
-    } catch (error) {
-        console.error('Error:', error);
-        chatWindow.removeChild(loadingEl);
-        const errorMsg = document.createElement('div');
-        errorMsg.className = 'message assistant';
-        errorMsg.innerHTML = `<p><em>May mali. Subukan ulit.</em></p>`;
-        chatWindow.appendChild(errorMsg);
+    } catch (err) {
+        console.error(err);
+        loading.innerHTML = '<p><em>May error. Subukan ulit.</em></p>';
     }
 }
 
-// Speak response using TTS
-function speakResponse(text) {
+function speak(text) {
     if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'fil-PH'; // Filipino if available, else en-US
-        utterance.rate = 1.05;
-        utterance.pitch = 1.0;
-        speechSynthesis.speak(utterance);
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'fil-PH';
+        u.rate = 1.1;
+        speechSynthesis.speak(u);
     }
 }
 
 // Voice input
-function initVoiceRecognition() {
-    if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
-        console.warn('Browser mo ay walang suporta sa Speech-to-Text');
+function initVoice() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert('Walang voice support sa browser mo.');
         return;
     }
-    
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
     recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.lang = 'fil-PH';
     recognition.interimResults = false;
-    recognition.lang = 'fil-PH'; // Filipino support if available
-    
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        const input = document.getElementById('message-input');
-        input.value = transcript;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = e => {
+        const transcript = e.results[0][0].transcript;
+        document.getElementById('message-input').value = transcript;
         sendMessage(transcript);
     };
-    
-    recognition.onerror = (event) => {
-        console.error('STT Error:', event.error);
-        isRecording = false;
-        document.getElementById('voice-input-btn').classList.remove('recording');
-    };
-    
+
     recognition.onend = () => {
         isRecording = false;
         document.getElementById('voice-input-btn').classList.remove('recording');
     };
+
+    document.getElementById('voice-input-btn').onclick = () => {
+        if (isRecording) {
+            recognition.stop();
+        } else {
+            isRecording = true;
+            document.getElementById('voice-input-btn').classList.add('recording');
+            recognition.start();
+        }
+    };
 }
 
-document.getElementById('voice-input-btn').addEventListener('click', () => {
-    if (!recognition) {
-        alert('Ang browser mo ay hindi sumusuporta sa voice input.');
-        return;
-    }
-    
-    if (isRecording) {
-        recognition.stop();
-        return;
-    }
-    
-    isRecording = true;
-    document.getElementById('voice-input-btn').classList.add('recording');
-    recognition.start();
-});
+function loadChats() {
+    const key = `convoChats_${currentUser.name}`;
+    const saved = localStorage.getItem(key);
+    chats = saved ? JSON.parse(saved) : [];
+    if (chats.length === 0) createNewChat();
+}
 
-// Init app
+function saveChats() {
+    const key = `convoChats_${currentUser.name}`;
+    localStorage.setItem(key, JSON.stringify(chats));
+}
+
 function initApp() {
-    userName = localStorage.getItem('userName');
-    userEmail = localStorage.getItem('userEmail');
-    
-    // Display user info
-    document.getElementById('user-display-name').textContent = userName;
-    document.getElementById('user-email').textContent = userEmail;
-    
+    currentUser = JSON.parse(localStorage.getItem('currentConvoUser'));
+
+    document.getElementById('user-display-name').textContent = currentUser.name;
+    document.getElementById('user-age-gender').textContent = `${currentUser.age} • ${currentUser.gender}`;
+
     loadChats();
     renderChatList();
     renderCurrentChat();
-    
-    // Event listeners
-    document.getElementById('new-chat-btn').addEventListener('click', () => {
-        createNewChat();
-    });
-    
-    document.getElementById('send-btn').addEventListener('click', () => {
+
+    document.getElementById('new-chat-btn').onclick = createNewChat;
+
+    document.getElementById('send-btn').onclick = () => {
         const input = document.getElementById('message-input');
         sendMessage(input.value);
         input.value = '';
-    });
-    
-    document.getElementById('message-input').addEventListener('keypress', (e) => {
+    };
+
+    document.getElementById('message-input').onkeypress = e => {
         if (e.key === 'Enter') {
             sendMessage(e.target.value);
             e.target.value = '';
         }
-    });
-    
-    document.getElementById('logout-btn').addEventListener('click', () => {
-        if (confirm('Sigurado ka bang gusto mong mag-sign out?')) {
-            localStorage.removeItem('userName');
-            localStorage.removeItem('userEmail');
-            document.getElementById('app').classList.add('hidden');
-            document.getElementById('login-screen').classList.remove('hidden');
-        }
-    });
-    
-    document.getElementById('clear-chat-btn').addEventListener('click', () => {
-        if (confirm('I-clear ang lahat ng mensahe sa usapang ito?')) {
+    };
+
+    document.getElementById('clear-chat-btn').onclick = () => {
+        if (confirm('I-clear lahat ng mensahe dito?')) {
             const chat = chats.find(c => c.id === currentChatId);
-            if (chat) {
-                chat.messages = [];
-                saveChats();
-                renderCurrentChat();
-            }
+            chat.messages = [];
+            saveChats();
+            renderCurrentChat();
         }
-    });
-    
-    // Init voice
-    initVoiceRecognition();
+    };
+
+    initVoice();
 }
 
-// Auto-login if already signed in
+// On load
 window.onload = () => {
-    const savedName = localStorage.getItem('userName');
-    if (savedName) {
-        document.getElementById('login-screen').classList.add('hidden');
+    if (localStorage.getItem('currentConvoUser')) {
+        document.getElementById('auth-screen').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
         initApp();
-    } else {
-        // Google Sign-In is initialized automatically by the script tag
     }
 };
