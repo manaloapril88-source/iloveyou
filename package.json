@@ -1,0 +1,16 @@
+{
+  "name": "stella-ai-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "groq-sdk": "^0.3.3",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5"
+  }
+}
