@@ -5,117 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Para sa Paborito Ko</title>
     <style>
-        * {
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
             background-color: black;
-            overflow-x: hidden;
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            justify-content: center;
         }
 
-        /* Overlay bago mag-start */
         #overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background: black;
+            z-index: 999;
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 9999;
             color: white;
             cursor: pointer;
             font-family: sans-serif;
         }
 
-        .container {
+        .wrapper {
             position: relative;
+            display: inline-block; /* Para sumunod ang scroll sa size ng image */
             width: 100%;
-            max-width: 800px; /* Nilimitahan ko ang lapad para hindi "stretch" ang mukha */
-            line-height: 0; /* Tinatanggal ang extra space sa ilalim ng letters */
+            max-width: 600px; /* Mas pino tingnan pag hindi sobrang lapad */
         }
 
         #textWall {
-            /* 1. Image mo dito */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            
+            /* Text Settings */
+            font-family: monospace;
+            font-weight: 900;
+            font-size: 6px; 
+            line-height: 0.8;
+            letter-spacing: -1px;
+            word-break: break-all;
+            text-align: justify;
+            
+            /* Magic Mask */
             background-image: url('love.jpg'); 
             background-size: 100% 100%;
-            background-repeat: no-repeat;
-            background-position: center;
-            
-            /* 2. Masking */
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-
-            /* 3. Font Settings (In-adjust para hindi patong-patong) */
-            font-family: 'Courier New', monospace;
-            font-weight: 900;
-            font-size: 8px; 
-            line-height: 1; /* Ginawang 1 para sakto ang patong */
-            letter-spacing: 0px; /* Ginawang 0 para mabasa ang text */
-            
-            word-break: break-all;
-            text-align: justify;
-            width: 100%;
-            display: block;
+            pointer-events: none;
         }
 
-        audio {
-            display: none;
+        /* Ang "ghost" image para makuha ang saktong haba ng scroll */
+        .base-image {
+            width: 100%;
+            display: block;
+            visibility: hidden; /* Nakatago pero nandun ang space */
         }
     </style>
 </head>
 <body>
 
-    <div id="overlay" onclick="startGift()">
-        <div style="text-align: center;">
-            <h1 style="font-weight: 100; letter-spacing: 5px;">PARA SA'YO</h1>
-            <p style="font-size: 10px; opacity: 0.5;">CLICK ANYWHERE</p>
-        </div>
+    <div id="overlay" onclick="start()">
+        <h1>CLICK MO 'TO 💖</h1>
     </div>
 
-    <audio id="mySong" loop>
-        <source src="song.mp3" type="audio/mpeg">
-    </audio>
+    <audio id="bgMusic" loop src="song.mp3"></audio>
 
-    <div class="container">
+    <div class="wrapper">
+        <img src="love.jpg" class="base-image">
         <div id="textWall"></div>
     </div>
 
     <script>
-        function startGift() {
-            document.getElementById('mySong').play();
+        function start() {
+            document.getElementById('bgMusic').play();
             document.getElementById('overlay').style.display = 'none';
-            generateText();
+            
+            const wall = document.getElementById('textWall');
+            const phrase = "iloveyou";
+            
+            // Mas pino ang calculation: Pinupuno ang div hanggang sa mapuno ang space
+            let content = "";
+            const totalChars = 150000; // Sapat na 'to para sa 1080p na image
+            wall.innerText = phrase.repeat(totalChars);
         }
-
-        function generateText() {
-            const container = document.getElementById('textWall');
-            const textToRepeat = "iloveyou";
-            
-            // 4. Kalkulasyon para hindi lumampas ang scroll
-            // Kukunin natin ang sukat ng screen para punuin lang ang space
-            const charWidth = 5; // estimate width ng isang letter
-            const charHeight = 8; // estimate height ng isang letter
-            const area = (window.innerWidth * window.innerHeight * 5); // estimate multiplier
-            
-            const totalCharsNeeded = Math.floor(area / textToRepeat.length);
-            
-            // Bubuo ng text na sakto lang
-            container.innerText = textToRepeat.repeat(totalCharsNeeded);
-        }
-
-        // Re-generate text pag nag-resize ang window para iwas black space
-        window.onresize = generateText;
     </script>
-
 </body>
 </html>
