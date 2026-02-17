@@ -10,34 +10,35 @@
         body {
             background-color: black;
             font-family: 'Arial', sans-serif;
-            overflow-x: hidden;
+            overflow: hidden; /* Iwas scroll habang nasa overlay */
             width: 100%;
+            height: 100vh;
         }
 
         /* --- OVERLAYS --- */
-        #intro-overlay, #message-overlay, #music-overlay {
+        .overlay {
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: black;
-            z-index: 1000;
+            z-index: 9999; /* Siguradong nasa pinaka-ibabaw */
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             color: white;
-            cursor: pointer;
             text-align: center;
-            padding: 30px;
+            padding: 20px;
+            cursor: pointer;
         }
 
-        #message-overlay, #music-overlay { display: none; } 
-
         /* --- MAIN CONTENT --- */
-        .main-wrapper {
+        #content {
             display: none;
             width: 100%;
             background: black;
-            min-height: 100vh;
         }
 
         #text-dump {
@@ -48,9 +49,9 @@
             text-align: justify;
             color: transparent; 
 
-            /* --- THE ZOOM FIX --- */
+            /* IMAGE MASKING */
             background-image: url('love.jpg');
-            background-size: 100% auto; /* Full width, natural height */
+            background-size: 100% auto;
             background-repeat: no-repeat;
             background-position: top center;
             background-attachment: scroll; 
@@ -64,38 +65,47 @@
         }
 
         @media (max-width: 768px) {
-            #text-dump {
-                font-size: 4px; /* Saktong liit para sa CP screen */
-                line-height: 0.75;
-                letter-spacing: -0.5px;
-            }
+            #text-dump { font-size: 4px; line-height: 0.75; }
         }
 
-        h1 { margin-bottom: 15px; letter-spacing: 2px; color: white; text-align: center; }
-        .btn-tap { border: 1px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; font-weight: bold; color: white; }
+        h1 { font-size: 1.5rem; margin-bottom: 20px; pointer-events: none; }
+        .btn-tap { 
+            border: 2px solid white; 
+            padding: 15px 30px; 
+            border-radius: 50px; 
+            font-weight: bold; 
+            text-transform: uppercase;
+            pointer-events: none; /* Para ang click ay dumiretso sa overlay div */
+        }
     </style>
 </head>
 <body>
 
-    <div id="intro-overlay" onclick="toMessage()">
+    <div id="step1" class="overlay" onclick="showNext('step1', 'step2')">
         <h1>CLICK TO OPEN 🎁</h1>
+        <div class="btn-tap">Tap here</div>
     </div>
 
-    <div id="message-overlay" onclick="toMusic()">
+    <div id="step2" class="overlay" style="display:none;" onclick="showNext('step2', 'step3')">
         <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
-        <p class="btn-tap">Next</p>
+        <div class="btn-tap">Next</div>
+     </div>
+
+     <div id="step3" class="overlay" style="display:none;" onclick="showNext('step2', 'step3')">
+        <h1 style="color: #ff4d4d;">Sorry kung panget eto lang kase kaya ko. Sana magustuhan mo.</h1>
+        <div class="btn-tap">Next</div>
     </div>
 
-    <div id="music-overlay" onclick="startGift()">
+    <div id="step4" class="overlay" style="display:none;" onclick="revealGift()">
         <h1>Enjoy the view, Khate! 💖</h1>
-        <p class="btn-tap">Reveal</p>
+        <div class="btn-tap">Reveal Now</div>
     </div>
 
-    <audio id="bgMusic" loop>
+    <audio id="bgMusic" loop preload="auto">
         <source src="song.mp3" type="audio/mpeg">
     </audio>
 
-    <div class="main-wrapper" id="content">
+    <div id="content">
         <div id="iloveyouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouilo                                    u     y                                        
 ouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouilov                                                                                
 eyouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouilovey                                                                            
@@ -176,31 +186,32 @@ ouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouil
     <script>
         const audio = document.getElementById("bgMusic");
 
-        function toMessage() {
-            document.getElementById('intro-overlay').style.display = 'none';
-            document.getElementById('message-overlay').style.display = 'flex';
+        function showNext(currentId, nextId) {
+            document.getElementById(currentId).style.display = 'none';
+            document.getElementById(nextId).style.display = 'flex';
+            // Pre-play/load music for mobile
+            audio.play().then(() => {
+                audio.pause();
+            }).catch(e => console.log("Audio readying..."));
         }
 
-        function toMusic() {
-            document.getElementById('message-overlay').style.display = 'none';
-            document.getElementById('music-overlay').style.display = 'flex';
-        }
-
-        function startGift() {
-            document.getElementById('music-overlay').style.display = 'none';
+        function revealGift() {
+            document.getElementById('step3').style.display = 'none';
             document.getElementById('content').style.display = 'block';
+            document.body.style.overflow = 'auto'; // Enable scroll na
             
             const dump = document.getElementById('text-dump');
             const text = "iloveyou";
-            // Pinupuno ang div para gumana ang scroll sa CP
-            dump.innerText = text.repeat(300000); 
+            dump.innerText = text.repeat(350000); 
             
             audio.play();
         }
 
-        // Para sa mga CP na kailangan ng extra tap para sa sound
+        // Emergency click anywhere to play
         window.onclick = function() {
-            if (audio.paused) audio.play();
+            if (document.getElementById('content').style.display === 'block' && audio.paused) {
+                audio.play();
+            }
         };
     </script>
 </body>
