@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Para kay Khate</title>
+    <title>For You Khate</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -32,22 +32,17 @@
 
         #message-overlay, #music-overlay { display: none; } 
 
+        /* --- MAIN CONTENT --- */
         .main-wrapper {
             position: relative;
-            width: 100%; 
-            margin: 0 auto;
-            display: none; /* Lilitaw lang via JS */
-        }
-
-        #reference-img {
             width: 100%;
-            height: auto;
-            display: block;
-            opacity: 0;
+            display: none;
+            /* Ito ang magdidikta kung gaano kahaba ang scroll sa CP */
+            height: 300vh; 
         }
 
         #text-layer {
-            position: absolute;
+            position: fixed; /* Naka-fix para habang nag-scroll, nandun lang ang image */
             top: 0;
             left: 0;
             width: 100%;
@@ -58,23 +53,38 @@
             word-break: break-all;
             text-align: justify;
             color: transparent;
+
             background-image: url('love.jpg');
-            background-size: 100% 100%;
+            background-size: cover; /* Eto ang magpapa-Full Screen sa CP nang hindi stretched */
+            background-position: center;
             background-repeat: no-repeat;
-            background-position: top center;
+            background-attachment: fixed;
+            
             -webkit-background-clip: text;
             background-clip: text;
-            pointer-events: none; 
-            font-size: 8px;
-            line-height: 0.8; 
+            
+            /* Siksik na text settings */
+            font-size: 5px;
+            line-height: 0.8;
             letter-spacing: -1px;
+            z-index: 1;
+        }
+
+        /* Scroll Progress Bar (Para alam niyang nag-scroll siya) */
+        #progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: #ff4d4d;
+            z-index: 1001;
+            width: 0%;
         }
 
         @media (max-width: 768px) {
             #text-layer {
-                font-size: 4px;
+                font-size: 4px; /* Mas pino para sa mobile screen */
                 line-height: 0.75;
-                letter-spacing: -0.5px;
             }
             h1 { font-size: 1.4rem; }
         }
@@ -85,6 +95,8 @@
     </style>
 </head>
 <body>
+
+    <div id="progress"></div>
 
     <div id="intro-overlay" onclick="toMessage()">
         <h1>CLICK TO OPEN 🎁</h1>
@@ -107,7 +119,6 @@
     </audio>
 
     <div class="main-wrapper" id="content">
-        <img src="love.jpg" id="reference-img">
         <div id="text-layer"></div>
     </div>
 
@@ -117,7 +128,6 @@
         function toMessage() {
             document.getElementById('intro-overlay').style.display = 'none';
             document.getElementById('message-overlay').style.display = 'flex';
-            // Start loading as early as possible
             audio.load();
         }
 
@@ -127,28 +137,32 @@
         }
 
         function startGift() {
-            // Unang gagawin: I-reveal ang content AGAD para hindi mag-stuck
             document.getElementById('music-overlay').style.display = 'none';
             document.getElementById('content').style.display = 'block';
             
-            // Pangalawa: Fill text
             fillScreen();
-
-            // Pangatlo: Try playing music
-            audio.play().catch(e => {
-                console.log("Auto-play prevented, waiting for next click.");
-            });
+            audio.play().catch(e => console.log("Audio waiting..."));
         }
 
         function fillScreen() {
             const layer = document.getElementById('text-layer');
             const text = "iloveyou";
-            // Check if laptop or mobile to adjust character count
-            const count = window.innerWidth < 768 ? 150000 : 250000;
-            layer.innerText = text.repeat(count); 
+            // Pinupuno natin ng malupit na amount ng text para mahaba ang scroll
+            layer.innerText = text.repeat(300000); 
         }
 
-        // EMERGENCY CLICK: Kung walang sound, kahit saan i-click sa screen habang nasa portrait
+        // Scroll Progress logic
+        window.onscroll = function() {
+            let winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            let height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            let scrolled = (winScroll / height) * 100;
+            document.getElementById("progress").style.width = scrolled + "%";
+            
+            // Re-trigger play on scroll kung sakaling ayaw pa rin
+            if (audio.paused) { audio.play(); }
+        };
+
+        // Emergency click
         window.onclick = function() {
             if (document.getElementById('content').style.display === 'block' && audio.paused) {
                 audio.play();
