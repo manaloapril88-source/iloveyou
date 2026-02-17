@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Para sa Paborito Ko</title>
     <style>
+        /* RESET */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
@@ -15,7 +16,7 @@
         }
 
         /* --- OVERLAYS --- */
-        #intro-overlay, #message-overlay {
+        #intro-overlay, #message-overlay, #music-overlay {
             position: fixed;
             inset: 0;
             background: black;
@@ -30,13 +31,12 @@
             padding: 30px;
         }
 
-        #message-overlay { display: none; } 
+        #message-overlay, #music-overlay { display: none; } 
 
         /* --- MAIN CONTAINER --- */
         .main-wrapper {
             position: relative;
             width: 100%; 
-            max-width: 100vw;
             margin: 0 auto;
             display: none;
         }
@@ -63,32 +63,33 @@
             color: transparent;
 
             background-image: url('love.jpg');
-            background-size: 100% 100%; /* Ginawang 100% 100% para saktong fit sa text mask */
+            background-size: 100% 100%;
             background-repeat: no-repeat;
             background-position: top center;
             -webkit-background-clip: text;
             background-clip: text;
             pointer-events: none; 
 
-            /* DEFAULT FOR LAPTOP */
+            /* Laptop View */
             font-size: 8px;
             line-height: 0.8; 
             letter-spacing: -1px;
         }
 
-        /* --- AUTO ADJUST PARA SA CP (MOBILE) --- */
+        /* AUTO ADJUST PARA SA CP */
         @media (max-width: 768px) {
             #text-layer {
-                font-size: 4px; /* Mas maliit sa CP para mas pino ang mukha */
+                font-size: 4px;
                 line-height: 0.75;
                 letter-spacing: -0.5px;
             }
-            h1 { font-size: 1.2rem; }
-            p { font-size: 12px; }
+            h1 { font-size: 1.4rem; }
+            p { font-size: 14px; }
         }
 
         h1 { margin-bottom: 15px; letter-spacing: 2px; }
-        .btn-tap { border: 1px solid white; padding: 10px 20px; border-radius: 20px; margin-top: 20px; }
+        .btn-tap { border: 1px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; font-weight: bold; }
+        .khate-text { color: #ff4d4d; font-style: italic; }
 
     </style>
 </head>
@@ -99,10 +100,15 @@
         <p>(Please turn up your volume 🔊)</p>
     </div>
 
-    <div id="message-overlay" onclick="startGift()">
+    <div id="message-overlay" onclick="toMusic()">
         <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
         <h3 style="color: white; font-weight: normal; margin-bottom: 20px;">I know na hindi ito maganda pero sana nagustuhan mo.</h3>
-        <p class="btn-tap">Tap here to see the surprise</p>
+        <p class="btn-tap">Next</p>
+    </div>
+
+    <div id="music-overlay" onclick="startGift()">
+        <h1 style="line-height: 1.5;">Play your favorite music and enjoy <span class="khate-text">khate!</span></h1>
+        <p class="btn-tap">Tap to reveal 💖</p>
     </div>
 
     <audio id="bgMusic" loop>
@@ -120,11 +126,16 @@
             document.getElementById('message-overlay').style.display = 'flex';
         }
 
+        function toMusic() {
+            document.getElementById('message-overlay').style.display = 'none';
+            document.getElementById('music-overlay').style.display = 'flex';
+        }
+
         function startGift() {
             var audio = document.getElementById("bgMusic");
-            audio.play().catch(error => { console.log("Audio failed"); });
+            audio.play().catch(error => { console.log("Audio play blocked"); });
 
-            document.getElementById('message-overlay').style.display = 'none';
+            document.getElementById('music-overlay').style.display = 'none';
             document.getElementById('content').style.display = 'block';
 
             fillScreen();
@@ -133,8 +144,8 @@
         function fillScreen() {
             const layer = document.getElementById('text-layer');
             const text = "iloveyou";
-            // Dinamihan natin para kahit anong zoom ng CP, puno ang screen
-            layer.innerText = text.repeat(150000); 
+            // Overfill to ensure no black spaces on any screen
+            layer.innerText = text.repeat(200000); 
         }
     </script>
 </body>
