@@ -10,55 +10,92 @@
             padding: 0;
             background-color: black;
             overflow-x: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Overlay bago i-open ang gift */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            color: white;
+            cursor: pointer;
+            text-align: center;
         }
 
         .ascii-art {
-            /* 1. Palitan ang filename kung kailangan */
+            display: none; /* Nakatago muna hanggang di naki-click */
             background-image: url('love.jpg'); 
-            
-            /* 2. Fix para sumama sa scroll */
-            background-size: 100% auto; /* Kakasya sa width, auto ang haba */
+            background-size: 100% auto;
             background-repeat: no-repeat;
             background-position: top center;
-            background-attachment: scroll; /* Ito ang binago para sumama sa scroll */
-
-            /* 3. Text Masking */
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-
-            /* 4. Font Styling */
             font-family: 'Courier New', monospace;
             font-weight: 900;
-            font-size: 8px; 
-            line-height: 0.85;
-            letter-spacing: -1px;
-            
+            font-size: 6px; 
+            line-height: 0.75;
+            letter-spacing: -2px;
             width: 100%;
-            /* Pinapahaba ang div para magkasya yung buong image habang nag-scroll */
-            min-height: 500vh; 
+            display: inline-block;
             word-break: break-all;
             text-align: justify;
         }
 
         @media (max-width: 600px) {
             .ascii-art {
-                font-size: 5px;
+                font-size: 4px;
                 line-height: 0.7;
+                letter-spacing: -1.5px;
             }
         }
     </style>
 </head>
 <body>
 
+    <div id="overlay" onclick="startEverything()">
+        <div>
+            <h2 style="font-weight: 100;">Click to Open Your Gift 🎁</h2>
+            <p style="font-size: 12px; opacity: 0.6;">(Turn on your volume)</p>
+        </div>
+    </div>
+
+    <audio id="mySong" loop>
+        <source src="song.mp3" type="audio/mpeg">
+    </audio>
+
     <div class="ascii-art" id="textWall"></div>
 
     <script>
+        // 1. Fill the wall with text
         const container = document.getElementById('textWall');
         const textToRepeat = "iloveyou";
-        
-        // Dinamihan ko lalo ang repeat para hindi magkulang ang text hanggang dulo ng scroll
-        container.innerText = textToRepeat.repeat(200000);
+        let longText = "";
+        for (let i = 0; i < 400000; i++) {
+            longText += textToRepeat;
+        }
+        container.innerText = longText;
+
+        // 2. Function para mag-play ang music at lumabas ang image
+        function startEverything() {
+            // I-play ang music
+            const audio = document.getElementById('mySong');
+            audio.play();
+
+            // Itago ang overlay
+            document.getElementById('overlay').style.display = 'none';
+
+            // Ipakita ang ASCII image
+            container.style.display = 'inline-block';
+        }
     </script>
 
 </body>
