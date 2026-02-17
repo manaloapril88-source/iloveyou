@@ -1,80 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Pure ILOVEYOU Portrait</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para sa Besty Ko</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
 
-<style>
-body{
- background:black;
- margin:0;
- overflow:hidden;
-}
+        .ascii-container {
+            /* Dito ilagay ang path ng picture ng jowa mo */
+            background-image: url('love.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            
+            /* Dito nangyayari ang magic */
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            
+            /* Text setup */
+            font-family: monospace;
+            font-weight: 900;
+            line-height: 0.8;
+            font-size: 10px; /* Liitan mo pa 'to kung gusto mo mas detailed */
+            width: 100vw;
+            height: 100vh;
+            word-break: break-all;
+            text-align: justify;
+            user-select: none;
+        }
 
-#labas{
- font-family: monospace;
- font-size:6px;
- line-height:6px;
- white-space:pre;
- color:#ffffff;
-}
-</style>
-
+        /* Responsive zoom effect */
+        .ascii-container:hover {
+            cursor: zoom-in;
+        }
+    </style>
 </head>
 <body>
 
-<pre id="labas"></pre>
+    <div class="ascii-container" id="textWall"></div>
 
-<script>
-
-const out = document.getElementById("labas")
-const img = new Image()
-img.src = "love.jpg"
-
-img.onload = function(){
-
- let canvas = document.createElement("canvas")
- let ctx = canvas.getContext("2d")
-
- let width = 350   // mataas resolution
- let scale = img.height / img.width
-
- canvas.width = width
- canvas.height = width * scale
-
- ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
- let data = ctx.getImageData(0,0,canvas.width,canvas.height).data
-
- let text = ""
- let word = "ILOVEYOU"
- let index = 0
-
- for(let y = 0; y < canvas.height; y++){
-   for(let x = 0; x < canvas.width; x++){
-
-     let i = (y * canvas.width + x) * 4
-     let r = data[i]
-     let g = data[i+1]
-     let b = data[i+2]
-
-     let brightness = (r+g+b)/3
-
-     if(brightness < 180){
-       text += word[index % word.length]
-       index++
-     } else {
-       text += " "
-     }
-
-   }
-   text += "\n"
- }
-
- out.textContent = text
-}
-
-</script>
-
+    <script>
+        const container = document.getElementById('textWall');
+        const text = "iloveyou";
+        const repeatCount = 50000; // Dami ng "iloveyou" para mapuno ang screen
+        
+        // Bubuo ng mahabang wall of text
+        container.innerText = text.repeat(repeatCount);
+    </script>
 </body>
 </html>
