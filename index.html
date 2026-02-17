@@ -9,94 +9,149 @@
         
         body {
             background-color: black;
+            font-family: 'Arial', sans-serif;
+            overflow-x: hidden;
             width: 100%;
-            height: 100vh;
-            overflow: hidden; 
-            font-family: 'Arial Black', sans-serif;
         }
 
-        .overlay {
+        /* --- OVERLAYS --- */
+        #intro-overlay, #message-overlay, #music-overlay {
             position: fixed;
             inset: 0;
             background: black;
-            z-index: 9999;
+            z-index: 1000;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             color: white;
             cursor: pointer;
+            text-align: center;
+            padding: 30px;
         }
 
-        #content {
-            display: none;
+        #message-overlay, #music-overlay { display: none; } 
+
+        /* --- MAIN CONTENT --- */
+        .main-wrapper {
+            position: relative;
             width: 100%;
-            height: 100vh;
+            display: none;
             background: black;
-            overflow-y: auto;
-            overflow-x: hidden;
+        }
+
+        /* Ito ang magdidikta ng tunay na height ng scroll */
+        #ref-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            visibility: hidden; /* Nakatago pero andyan para sa height */
         }
 
         #text-layer {
+            position: absolute; /* Absolute para sumama sa scroll */
+            top: 0;
+            left: 0;
             width: 100%;
-            /* ETO ANG MAGIC: clamp(min, preferred, max) */
-            /* Hindi na siya lalampas sa 18px sa PC, at hindi bababa sa 8px sa CP */
-            font-size: clamp(8px, 1.2vw, 18px); 
-            
-            line-height: 0.85;
-            letter-spacing: -0.02em;
+            height: 100%;
+            overflow: hidden;
+            font-family: monospace;
             font-weight: 900;
-            text-transform: uppercase;
             word-break: break-all;
             text-align: justify;
             color: transparent;
 
+            /* Image Settings - Zoomed Look */
             background-image: url('love.jpg');
-            background-size: contain; 
-            background-position: top center;
+            background-size: 100% 100%; /* Saktong siksik sa buong scroll area */
             background-repeat: no-repeat;
-            background-attachment: local;
+            background-position: top center;
             
             -webkit-background-clip: text;
             background-clip: text;
             
-            /* Enhanced contrast para kitang-kita ang feature ng mukha */
-            filter: contrast(1.4) brightness(1.1);
+            /* Siksik na text settings */
+            font-size: 6px;
+            line-height: 0.82;
+            letter-spacing: -1.2px;
         }
 
-        .btn-tap { border: 2px solid white; padding: 12px 30px; border-radius: 50px; margin-top: 20px; font-size: 14px; }
+        @media (max-width: 768px) {
+            #text-layer {
+                font-size: 4px; /* Mas pino para sa CP */
+                line-height: 0.8;
+                letter-spacing: -0.8px;
+            }
+            h1 { font-size: 1.4rem; }
+        }
+
+        h1 { margin-bottom: 15px; letter-spacing: 2px; line-height: 1.2; }
+        .btn-tap { border: 1px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; font-weight: bold; }
+        .khate-text { color: #ff4d4d; font-style: italic; }
     </style>
 </head>
 <body>
 
-    <div id="step1" class="overlay" onclick="start()">
-        <h1>CLICK TO REVEAL 💖</h1>
-        <div class="btn-tap">OPEN</div>
+    <div id="intro-overlay" onclick="toMessage()">
+        <h1>CLICK TO OPEN 🎁</h1>
+        <p>(Please turn up your volume 🔊)</p>
+    </div>
+
+    <div id="message-overlay" onclick="toMusic()">
+        <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
+        <h3 style="color: white; font-weight: normal; margin-bottom: 20px;">I know na hindi ito maganda pero sana nagustuhan mo.</h3>
+        <p class="btn-tap">Next</p>
+    </div>
+
+    <div id="music-overlay" onclick="startGift()">
+        <h1>Play your favorite music and enjoy <span class="khate-text">khate!</span></h1>
+        <p class="btn-tap">Tap to reveal 💖</p>
     </div>
 
     <audio id="bgMusic" loop>
         <source src="song.mp3" type="audio/mpeg">
     </audio>
 
-    <div id="content">
+    <div class="main-wrapper" id="content">
+        <img src="love.jpg" id="ref-img">
         <div id="text-layer"></div>
     </div>
 
     <script>
-        function start() {
-            document.getElementById('step1').style.display = 'none';
-            document.getElementById('content').style.display = 'block';
-            document.body.style.overflow = 'auto';
-            
-            const audio = document.getElementById("bgMusic");
-            audio.play().catch(e => {});
+        const audio = document.getElementById("bgMusic");
 
-            const layer = document.getElementById('text-layer');
-            const text = "ILOVEYOU";
-            
-            // Mas pinarami para siguradong puno hanggang baba
-            layer.innerText = text.repeat(80000); 
+        function toMessage() {
+            document.getElementById('intro-overlay').style.display = 'none';
+            document.getElementById('message-overlay').style.display = 'flex';
+            audio.load();
         }
+
+        function toMusic() {
+            document.getElementById('message-overlay').style.display = 'none';
+            document.getElementById('music-overlay').style.display = 'flex';
+        }
+
+        function startGift() {
+            document.getElementById('music-overlay').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            
+            fillScreen();
+            audio.play().catch(e => console.log("Audio waiting..."));
+        }
+
+        function fillScreen() {
+            const layer = document.getElementById('text-layer');
+            const text = "iloveyou";
+            // Sobra-sobrahan ang text para kahit gaano kahaba ang image, puno siya
+            layer.innerText = text.repeat(250000); 
+        }
+
+        // Emergency play trigger
+        window.onclick = function() {
+            if (document.getElementById('content').style.display === 'block' && audio.paused) {
+                audio.play();
+            }
+        };
     </script>
 </body>
 </html>
