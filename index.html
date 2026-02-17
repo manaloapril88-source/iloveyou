@@ -10,12 +10,11 @@
         body {
             background-color: black;
             font-family: 'Arial', sans-serif;
-            overflow: hidden; /* Iwas scroll habang nasa overlay */
+            overflow: hidden; 
             width: 100%;
             height: 100vh;
         }
 
-        /* --- OVERLAYS --- */
         .overlay {
             position: fixed;
             top: 0;
@@ -23,7 +22,7 @@
             width: 100%;
             height: 100%;
             background: black;
-            z-index: 9999; /* Siguradong nasa pinaka-ibabaw */
+            z-index: 9999;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -34,7 +33,6 @@
             cursor: pointer;
         }
 
-        /* --- MAIN CONTENT --- */
         #content {
             display: none;
             width: 100%;
@@ -49,8 +47,8 @@
             text-align: justify;
             color: transparent; 
 
-            /* IMAGE MASKING */
-            background-image: url('love.jpg');
+            /* --- ETO YUNG JPG MO --- */
+            background-image: url('love.jpg'); 
             background-size: 100% auto;
             background-repeat: no-repeat;
             background-position: top center;
@@ -75,7 +73,7 @@
             border-radius: 50px; 
             font-weight: bold; 
             text-transform: uppercase;
-            pointer-events: none; /* Para ang click ay dumiretso sa overlay div */
+            pointer-events: none;
         }
     </style>
 </head>
@@ -89,10 +87,10 @@
     <div id="step2" class="overlay" style="display:none;" onclick="showNext('step2', 'step3')">
         <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
         <div class="btn-tap">Next</div>
-     </div>
+    </div>
 
-     <div id="step3" class="overlay" style="display:none;" onclick="showNext('step2', 'step3')">
-        <h1 style="color: #ff4d4d;">Sorry kung panget eto lang kase kaya ko. Sana magustuhan mo.</h1>
+    <div id="step3" class="overlay" style="display:none;" onclick="showNext('step3', 'step4')">
+        <h1 style="color: #ff4d4d;">Sorry kung panget eto lang kase kaya ko.<br>Sana magustuhan mo.</h1>
         <div class="btn-tap">Next</div>
     </div>
 
@@ -189,30 +187,22 @@ ouiloveyouiloveyouiloveyouiloveyouiloveyouiloveyouil
         function showNext(currentId, nextId) {
             document.getElementById(currentId).style.display = 'none';
             document.getElementById(nextId).style.display = 'flex';
-            // Pre-play/load music for mobile
-            audio.play().then(() => {
-                audio.pause();
-            }).catch(e => console.log("Audio readying..."));
+            
+            // Warm up audio
+            audio.play().then(() => { audio.pause(); }).catch(e => {});
         }
 
         function revealGift() {
-            document.getElementById('step3').style.display = 'none';
+            document.getElementById('step4').style.display = 'none';
             document.getElementById('content').style.display = 'block';
-            document.body.style.overflow = 'auto'; // Enable scroll na
+            document.body.style.overflow = 'auto'; 
             
             const dump = document.getElementById('text-dump');
-            const text = "iloveyou";
-            dump.innerText = text.repeat(350000); 
+            // Pinupuno natin ng text para mag-form yung image
+            dump.innerText = "iloveyou".repeat(400000); 
             
             audio.play();
         }
-
-        // Emergency click anywhere to play
-        window.onclick = function() {
-            if (document.getElementById('content').style.display === 'block' && audio.paused) {
-                audio.play();
-            }
-        };
     </script>
 </body>
 </html>
