@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Para sa Paborito Ko</title>
+    <title>For you Khate💗</title>
     <style>
         body {
             margin: 0;
@@ -11,6 +11,8 @@
             background-color: black;
             display: flex;
             justify-content: center;
+            /* Tinatanggal ang scroll sa body para sa wrapper lang ang scroll */
+            overflow: hidden; 
         }
 
         #overlay {
@@ -26,11 +28,20 @@
             font-family: sans-serif;
         }
 
+        /* Dito natin lilitaw ang zoom at scroll control */
+        .scroll-container {
+            width: 100vw;
+            height: 100vh;
+            overflow-y: auto; /* Dito lang ang scroll */
+            overflow-x: hidden;
+        }
+
         .wrapper {
             position: relative;
-            display: inline-block; /* Para sumunod ang scroll sa size ng image */
             width: 100%;
-            max-width: 600px; /* Mas pino tingnan pag hindi sobrang lapad */
+            max-width: 600px; /* Standard portrait width */
+            margin: 0 auto;
+            line-height: 0;
         }
 
         #textWall {
@@ -40,43 +51,48 @@
             width: 100%;
             height: 100%;
             
-            /* Text Settings */
+            /* Text Settings - Zoomed and Fine */
             font-family: monospace;
             font-weight: 900;
-            font-size: 6px; 
+            font-size: 5px; /* Ginawa kong 5px para mas zoomed/pino */
             line-height: 0.8;
             letter-spacing: -1px;
             word-break: break-all;
             text-align: justify;
             
-            /* Magic Mask */
+            /* Image Masking */
             background-image: url('love.jpg'); 
-            background-size: 100% 100%;
+            background-size: cover; /* Eto ang nagpapa-zoom sa image sa loob ng text */
+            background-position: center;
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
             pointer-events: none;
+            z-index: 2;
         }
 
-        /* Ang "ghost" image para makuha ang saktong haba ng scroll */
+        /* Ito ang magsasabi sa browser kung kailan titigil ang scroll */
         .base-image {
             width: 100%;
+            height: auto;
             display: block;
-            visibility: hidden; /* Nakatago pero nandun ang space */
+            visibility: hidden; /* Guide lang siya */
         }
     </style>
 </head>
 <body>
 
     <div id="overlay" onclick="start()">
-        <h1>CLICK MO 'TO 💖</h1>
+        <h1 style="font-weight: 100;">CLICK TO VIEW</h1>
     </div>
 
     <audio id="bgMusic" loop src="song.mp3"></audio>
 
-    <div class="wrapper">
-        <img src="love.jpg" class="base-image">
-        <div id="textWall"></div>
+    <div class="scroll-container">
+        <div class="wrapper">
+            <img src="love.jpg" class="base-image" id="guideImg">
+            <div id="textWall"></div>
+        </div>
     </div>
 
     <script>
@@ -87,9 +103,10 @@
             const wall = document.getElementById('textWall');
             const phrase = "iloveyou";
             
-            // Mas pino ang calculation: Pinupuno ang div hanggang sa mapuno ang space
+            // Mas pino na loop para punuin ang screen base sa height ng image
+            // Gagamit tayo ng mas malaking number para sigurado hanggang dulo
             let content = "";
-            const totalChars = 150000; // Sapat na 'to para sa 1080p na image
+            const totalChars = 250000; 
             wall.innerText = phrase.repeat(totalChars);
         }
     </script>
