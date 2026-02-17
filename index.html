@@ -7,17 +7,19 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
        
-        body {
+        html, body {
             background-color: black;
             font-family: 'Arial', sans-serif;
             overflow: hidden;
             width: 100%;
             height: 100dvh;
+            margin: 0;
+            padding: 0;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- OVERLAYS --- */
+        /* OVERLAYS - ginawang fully tappable */
         #intro-overlay, #message-overlay {
             position: fixed;
             inset: 0;
@@ -32,15 +34,14 @@
             padding: 30px;
             cursor: pointer;
             pointer-events: auto;
+            user-select: none;
         }
         #message-overlay { display: none; }
 
-        /* --- MAIN CONTAINER --- */
         .main-wrapper {
             position: relative;
             width: 100%;
             height: 100dvh;
-            margin: 0 auto;
             display: none;
         }
         #reference-img {
@@ -51,10 +52,7 @@
         }
         #text-layer {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             overflow: hidden;
             font-family: monospace;
             font-weight: 900;
@@ -84,7 +82,8 @@
         }
 
         h1 { margin-bottom: 20px; letter-spacing: 2px; }
-        
+
+        /* Button styles - mas visible at tappable */
         .btn-tap {
             border: 2px solid white;
             padding: 20px 50px;
@@ -95,19 +94,24 @@
             font-weight: bold;
             cursor: pointer;
             min-width: 85%;
-            max-width: 95%;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
-            letter-spacing: 1px;
-            transition: all 0.2s ease;
             pointer-events: auto;
             z-index: 1002;
+            transition: transform 0.15s ease, background 0.15s ease;
         }
 
-        .btn-tap:active {
-            background: rgba(255, 77, 77, 0.7);
+        .btn-tap:active,
+        .btn-tap:focus {
             transform: scale(0.95);
+            background: rgba(255, 77, 77, 0.7);
+            outline: none;
+        }
+
+        /* Fallback para sa iOS quirks: whole overlay tappable */
+        #message-overlay.tappable {
+            cursor: pointer;
         }
     </style>
 </head>
@@ -139,36 +143,10 @@
     </div>
 
     <script>
-        // Intro overlay click/tap
-        const intro = document.getElementById('intro-overlay');
-        intro.addEventListener('click', toMessage);
-        intro.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            toMessage();
-        }, { passive: false });
-
         function toMessage() {
             document.getElementById('intro-overlay').style.display = 'none';
             document.getElementById('message-overlay').style.display = 'flex';
         }
-
-        // Message overlay + button handling
-        const messageOverlay = document.getElementById('message-overlay');
-        const surpriseBtn = document.getElementById('surpriseBtn');
-
-        // Make whole overlay tappable as backup
-        messageOverlay.addEventListener('click', startGift);
-        messageOverlay.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            startGift();
-        }, { passive: false });
-
-        // Button specific (primary trigger)
-        surpriseBtn.addEventListener('click', startGift);
-        surpriseBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            startGift();
-        }, { passive: false });
 
         async function startGift() {
             const audio = document.getElementById("bgMusic");
@@ -177,11 +155,10 @@
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     await playPromise;
-                    console.log("Audio started!");
+                    console.log("Audio nag-play na!");
                 }
             } catch (err) {
-                console.error("Audio play failed:", err);
-                // Optional: alert("Audio hindi nag-play. Subukang i-tap ulit o check volume.");
+                console.error("Audio error:", err);
             }
 
             document.getElementById('message-overlay').style.display = 'none';
@@ -190,10 +167,34 @@
         }
 
         function fillScreen() {
-            const layer = document.getElementById('text-layer');
-            const text = "iloveyou";
-            layer.innerText = text.repeat(60000);
+            document.getElementById('text-layer').innerText = "iloveyou".repeat(60000);
         }
+
+        // Event listeners - priority sa button, fallback sa overlay
+        const intro = document.getElementById('intro-overlay');
+        intro.addEventListener('click', toMessage);
+        intro.addEventListener('touchend', e => { e.preventDefault(); toMessage(); }, { passive: false });
+
+        const overlay = document.getElementById('message-overlay');
+        const btn = document.getElementById('surpriseBtn');
+
+        // Button primary
+        btn.addEventListener('click', startGift);
+        btn.addEventListener('touchend', e => {
+            e.preventDefault();
+            e.stopPropagation(); // iwas sa double fire
+            startGift();
+        }, { passive: false });
+
+        // Whole overlay fallback (para siguradong may matamaan)
+        overlay.addEventListener('click', startGift);
+        overlay.addEventListener('touchend', e => {
+            // Only trigger if tap is not on button (avoid double)
+            if (e.target === overlay || e.target === document.querySelector('h1') || e.target === document.querySelector('h3')) {
+                e.preventDefault();
+                startGift();
+            }
+        }, { passive: false });
     </script>
 </body>
 </html>
