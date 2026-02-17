@@ -12,10 +12,9 @@
             width: 100%;
             height: 100vh;
             overflow: hidden; 
-            font-family: 'Arial Black', 'Arial Bold', Impact, sans-serif;
+            font-family: 'Arial Black', sans-serif;
         }
 
-        /* OVERLAY (Start Screen) */
         .overlay {
             position: fixed;
             inset: 0;
@@ -26,79 +25,53 @@
             justify-content: center;
             align-items: center;
             color: white;
-            text-align: center;
             cursor: pointer;
         }
 
-        .btn-tap { 
-            border: 2px solid white; 
-            padding: 15px 40px; 
-            border-radius: 50px; 
-            margin-top: 20px; 
-            font-weight: bold; 
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        /* MAIN AREA */
         #content {
             display: none;
             width: 100%;
             height: 100vh;
             background: black;
-            overflow: auto; 
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
-        /* TEXT PORTRAIT SETTINGS */
         #text-layer {
             width: 100%;
-            min-height: 100vh;
+            /* ETO ANG MAGIC: clamp(min, preferred, max) */
+            /* Hindi na siya lalampas sa 18px sa PC, at hindi bababa sa 8px sa CP */
+            font-size: clamp(8px, 1.2vw, 18px); 
             
-            /* DITO ANG SOLUSYON SA STATIC SA PC */
-            /* Ang font size ay 1.8% ng width ng screen. 
-               Kaya sa PC malaki ang text, sa CP maliit. 
-               Pero SAME ang itsura at bilang ng letters per line. */
-            font-size: 1.8vw; 
-            
-            /* TIGHT SPACING PARA BUO ANG IMAGE */
-            line-height: 0.8; 
-            letter-spacing: -0.05em; 
-            
-            font-weight: 900; 
+            line-height: 0.85;
+            letter-spacing: -0.02em;
+            font-weight: 900;
             text-transform: uppercase;
             word-break: break-all;
-            text-align: center;
+            text-align: justify;
             color: transparent;
 
-            /* IMAGE BACKGROUND */
-            background-image: url('love.jpg'); /* Siguraduhin na tama ang filename */
-            
-            /* FORCE FULL SCREEN COVERAGE */
-            background-size: cover; 
-            background-position: center;
+            background-image: url('love.jpg');
+            background-size: contain; 
+            background-position: top center;
             background-repeat: no-repeat;
-            background-attachment: local; 
+            background-attachment: local;
             
             -webkit-background-clip: text;
             background-clip: text;
             
-            /* Contrast Boost para lumitaw ang mukha */
-            filter: contrast(1.3) brightness(1.2); 
+            /* Enhanced contrast para kitang-kita ang feature ng mukha */
+            filter: contrast(1.4) brightness(1.1);
         }
 
-        /* OPTIONAL: Kunting adjust sa mobile kung masyadong malaki */
-        @media (max-width: 768px) {
-            #text-layer {
-                font-size: 2.5vw; /* Mas malaki konti sa mobile para readable */
-            }
-        }
+        .btn-tap { border: 2px solid white; padding: 12px 30px; border-radius: 50px; margin-top: 20px; font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <div id="step1" class="overlay" onclick="revealGift()">
-        <h1>CLICK TO OPEN 🎁</h1>
-        <div class="btn-tap">Reveal Khate</div>
+    <div id="step1" class="overlay" onclick="start()">
+        <h1>CLICK TO REVEAL 💖</h1>
+        <div class="btn-tap">OPEN</div>
     </div>
 
     <audio id="bgMusic" loop>
@@ -110,25 +83,19 @@
     </div>
 
     <script>
-        const audio = document.getElementById("bgMusic");
+        function start() {
+            document.getElementById('step1').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            document.body.style.overflow = 'auto';
+            
+            const audio = document.getElementById("bgMusic");
+            audio.play().catch(e => {});
 
-        function revealGift() {
-            const overlay = document.getElementById('step1');
-            const content = document.getElementById('content');
             const layer = document.getElementById('text-layer');
+            const text = "ILOVEYOU";
             
-            overlay.style.display = 'none';
-            content.style.display = 'block';
-            
-            // Audio Play
-            audio.play().catch(e => console.log("Audio needs interaction"));
-
-            // TEXT FILLER
-            const text = "ILOVEYOU"; 
-            
-            // Mas kaunti na ang kailangan na repeat kasi malaki na ang font sa PC
-            // Ito ay sapat na para punuin ang screen nang hindi nagla-lag
-            layer.innerText = text.repeat(15000); 
+            // Mas pinarami para siguradong puno hanggang baba
+            layer.innerText = text.repeat(80000); 
         }
     </script>
 </body>
