@@ -3,17 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>For My Love</title>
+    <title>Para sa Paborito Ko</title>
     <style>
-        body {
+        * {
             margin: 0;
             padding: 0;
-            background-color: black;
-            overflow-x: hidden;
-            font-family: Arial, sans-serif;
+            box-sizing: border-box;
         }
 
-        /* Overlay bago i-open ang gift */
+        body {
+            background-color: black;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Overlay bago mag-start */
         #overlay {
             position: fixed;
             top: 0;
@@ -24,47 +30,55 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 999;
+            z-index: 9999;
             color: white;
             cursor: pointer;
-            text-align: center;
+            font-family: sans-serif;
         }
 
-        .ascii-art {
-            display: none; /* Nakatago muna hanggang di naki-click */
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 800px; /* Nilimitahan ko ang lapad para hindi "stretch" ang mukha */
+            line-height: 0; /* Tinatanggal ang extra space sa ilalim ng letters */
+        }
+
+        #textWall {
+            /* 1. Image mo dito */
             background-image: url('love.jpg'); 
-            background-size: 100% auto;
+            background-size: 100% 100%;
             background-repeat: no-repeat;
-            background-position: top center;
+            background-position: center;
+            
+            /* 2. Masking */
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
+
+            /* 3. Font Settings (In-adjust para hindi patong-patong) */
             font-family: 'Courier New', monospace;
             font-weight: 900;
-            font-size: 6px; 
-            line-height: 0.75;
-            letter-spacing: -2px;
-            width: 100%;
-            display: inline-block;
+            font-size: 8px; 
+            line-height: 1; /* Ginawang 1 para sakto ang patong */
+            letter-spacing: 0px; /* Ginawang 0 para mabasa ang text */
+            
             word-break: break-all;
             text-align: justify;
+            width: 100%;
+            display: block;
         }
 
-        @media (max-width: 600px) {
-            .ascii-art {
-                font-size: 4px;
-                line-height: 0.7;
-                letter-spacing: -1.5px;
-            }
+        audio {
+            display: none;
         }
     </style>
 </head>
 <body>
 
-    <div id="overlay" onclick="startEverything()">
-        <div>
-            <h2 style="font-weight: 100;">Click to Open Your Gift 🎁</h2>
-            <p style="font-size: 12px; opacity: 0.6;">(Turn on your volume)</p>
+    <div id="overlay" onclick="startGift()">
+        <div style="text-align: center;">
+            <h1 style="font-weight: 100; letter-spacing: 5px;">PARA SA'YO</h1>
+            <p style="font-size: 10px; opacity: 0.5;">CLICK ANYWHERE</p>
         </div>
     </div>
 
@@ -72,30 +86,35 @@
         <source src="song.mp3" type="audio/mpeg">
     </audio>
 
-    <div class="ascii-art" id="textWall"></div>
+    <div class="container">
+        <div id="textWall"></div>
+    </div>
 
     <script>
-        // 1. Fill the wall with text
-        const container = document.getElementById('textWall');
-        const textToRepeat = "iloveyou";
-        let longText = "";
-        for (let i = 0; i < 400000; i++) {
-            longText += textToRepeat;
-        }
-        container.innerText = longText;
-
-        // 2. Function para mag-play ang music at lumabas ang image
-        function startEverything() {
-            // I-play ang music
-            const audio = document.getElementById('mySong');
-            audio.play();
-
-            // Itago ang overlay
+        function startGift() {
+            document.getElementById('mySong').play();
             document.getElementById('overlay').style.display = 'none';
-
-            // Ipakita ang ASCII image
-            container.style.display = 'inline-block';
+            generateText();
         }
+
+        function generateText() {
+            const container = document.getElementById('textWall');
+            const textToRepeat = "iloveyou";
+            
+            // 4. Kalkulasyon para hindi lumampas ang scroll
+            // Kukunin natin ang sukat ng screen para punuin lang ang space
+            const charWidth = 5; // estimate width ng isang letter
+            const charHeight = 8; // estimate height ng isang letter
+            const area = (window.innerWidth * window.innerHeight * 5); // estimate multiplier
+            
+            const totalCharsNeeded = Math.floor(area / textToRepeat.length);
+            
+            // Bubuo ng text na sakto lang
+            container.innerText = textToRepeat.repeat(totalCharsNeeded);
+        }
+
+        // Re-generate text pag nag-resize ang window para iwas black space
+        window.onresize = generateText;
     </script>
 
 </body>
