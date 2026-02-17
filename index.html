@@ -5,137 +5,149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Para sa Paborito Ko</title>
     <style>
+        /* RESET */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             background-color: black;
             font-family: 'Arial', sans-serif;
-            overflow: hidden; /* Lock scroll hanggang di tapos ang intro */
+            overflow-x: hidden; /* Bawal ang scroll sa gilid */
+            width: 100%;
         }
 
-        /* Full Screen Overlays */
+        /* --- OVERLAYS --- */
         #intro-overlay, #message-overlay {
             position: fixed;
-            inset: 0;
+            top: 0; 
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: black;
-            z-index: 9999;
+            z-index: 1000;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             color: white;
+            cursor: pointer;
             text-align: center;
             padding: 20px;
-            cursor: pointer;
         }
 
-        #message-overlay { display: none; } /* Hidden at first */
+        #message-overlay { display: none; } 
 
-        .scroll-container {
-            width: 100vw;
-            height: 100vh;
-            overflow-y: auto;
-            display: none; /* Lilitaw lang after clicks */
-        }
-
-        .wrapper {
+        /* --- MAIN CONTAINER --- */
+        /* Ito ang trick: Ang container na 'to ay kasing laki lang ng image */
+        .main-wrapper {
             position: relative;
-            width: 100%;
-            max-width: 500px; /* Saktong portrait width para zoomed look */
-            margin: 0 auto;
-            background: black;
+            width: 100%; /* Sasakupin ang buong lapad para ZOOMED look */
+            max-width: 800px; /* Optional: para di masyadong sabog sa super wide monitor */
+            margin: 0 auto; /* Center sa screen */
+            display: none; /* Nakatago hanggat di tapos ang intro */
         }
 
-        #textWall {
+        /* Ang Ghost Image: Ito ang magdidikta ng height ng scroll */
+        #reference-img {
             width: 100%;
-            /* Text Settings para siksik */
+            height: auto;
+            display: block;
+            opacity: 0; /* Invisible siya, pero siya ang nagtutulak ng content */
+        }
+
+        /* Ang Text Wall: Nakapatong exactly sa Ghost Image */
+        #text-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* CRITICAL: Puputulin ang sobrang text */
+            
+            /* Text Styling - Zoomed & Detailed */
             font-family: monospace;
             font-weight: 900;
-            font-size: 5px; 
-            line-height: 0.82;
-            letter-spacing: -0.5px;
+            font-size: 9px; /* Medyo pinalaki ko para mas readable pero detailed pa rin */
+            line-height: 0.8; 
+            letter-spacing: -1px;
             word-break: break-all;
             text-align: justify;
-            
-            /* Image Masking */
-            background-image: url('love.jpg'); 
-            background-size: 100% 100%; /* Fit sa buong wall */
+            color: transparent; /* Transparent kasi image ang kulay */
+
+            /* Image Masking Logic */
+            background-image: url('love.jpg');
+            background-size: 100% auto; /* Mag-aadjust kasabay ng reference image */
             background-repeat: no-repeat;
+            background-position: top center;
+            
+            /* Magic Effect */
             -webkit-background-clip: text;
             background-clip: text;
-            color: transparent;
+            
+            pointer-events: none; 
         }
 
-        #guideImg {
-            width: 100%;
-            display: block;
-            visibility: hidden;
-        }
+        h1 { margin-bottom: 15px; letter-spacing: 2px; }
+        p { font-size: 14px; opacity: 0.7; }
 
-        h1 { font-size: 1.5rem; letter-spacing: 2px; margin-bottom: 10px; }
-        p { font-size: 0.8rem; opacity: 0.6; }
     </style>
 </head>
 <body>
 
-    <div id="intro-overlay" onclick="showSecondOverlay()">
+    <div id="intro-overlay" onclick="toMessage()">
         <h1>CLICK TO OPEN 🎁</h1>
-        <p>May sasabihin lang ako...</p>
+        <p>(Please turn up your volume 🔊)</p>
     </div>
 
-    <div id="message-overlay" onclick="startEverything()">
+    <div id="message-overlay" onclick="startGift()">
         <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
-        <h1 style="color: #ff4d4d;">I know na hindi ito maganda pero sana nagustuhan mo.</h1>
-        <p>Seryoso, i-tap mo na ulit para sa gift mo.</p>
+        <h3 style="color: white; font-weight: normal; margin-bottom: 20px;">I know na hindi ito maganda pero sana nagustuhan mo.</h3>
+        <p style="border: 1px solid white; padding: 10px 20px; border-radius: 20px;">Tap here to open</p>
     </div>
 
-    <audio id="bgMusic" loop src="song.mp3"></audio>
+    <audio id="bgMusic" loop>
+        <source src="song.mp3" type="audio/mpeg">
+    </audio>
 
-    <div class="scroll-container" id="mainScroll">
-        <div class="wrapper">
-            <img src="love.jpg" id="guideImg">
-            <div id="textWall"></div>
-        </div>
+    <div class="main-wrapper" id="content">
+        <img src="love.jpg" id="reference-img">
+        
+        <div id="text-layer"></div>
     </div>
 
     <script>
-        function showSecondOverlay() {
+        function toMessage() {
             document.getElementById('intro-overlay').style.display = 'none';
             document.getElementById('message-overlay').style.display = 'flex';
         }
 
-        function startEverything() {
-            const music = document.getElementById('bgMusic');
-            music.play();
+        function startGift() {
+            // 1. Play Music (Interaction required kaya dito nilagay)
+            var audio = document.getElementById("bgMusic");
+            audio.play().catch(error => {
+                console.log("Audio play failed: " + error);
+            });
 
+            // 2. Hide Message, Show Content
             document.getElementById('message-overlay').style.display = 'none';
-            document.getElementById('mainScroll').style.display = 'block';
-            document.body.style.overflow = 'auto'; // Enable scroll na
+            document.getElementById('content').style.display = 'block';
 
-            fillWithText();
+            // 3. Generate Text
+            fillScreen();
         }
 
-        function fillWithText() {
-            const wall = document.getElementById('textWall');
-            const guide = document.getElementById('guideImg');
-            const phrase = "iloveyou";
+        function fillScreen() {
+            const layer = document.getElementById('text-layer');
+            const text = "iloveyou";
             
-            // Kalkulasyon: Punuin ang wall base sa taas ng image
-            // Para walang itim sa ilalim, dynamic nating kukunin ang characters
-            const containerHeight = guide.clientHeight;
-            const fontSize = 5; 
-            const charactersPerLine = Math.floor(wall.clientWidth / (fontSize * 0.6));
-            const linesNeeded = Math.floor(containerHeight / (fontSize * 0.82));
-            const totalCharsNeeded = (charactersPerLine * linesNeeded);
-
-            let longText = "";
-            const repetitions = Math.ceil(totalCharsNeeded / phrase.length);
+            // LOGIC FIX:
+            // Hindi na tayo magbibilang. 
+            // Basta pupunuin natin ng sobrang daming text.
+            // Dahil naka 'overflow: hidden' ang CSS, kusa siyang mapuputol sa dulo ng image.
             
-            wall.innerText = phrase.repeat(repetitions + 100); // Buffer para sure
+            let bigText = text.repeat(100000); 
+            layer.innerText = bigText;
         }
-
-        // I-sync ang text wall height sa image height
-        window.addEventListener('resize', fillWithText);
     </script>
+
 </body>
 </html>
