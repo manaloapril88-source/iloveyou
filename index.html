@@ -12,10 +12,10 @@
             width: 100%;
             height: 100vh;
             overflow: hidden; 
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: 'Arial Black', 'Arial Bold', Impact, sans-serif;
         }
 
-        /* OVERLAY SETUP */
+        /* OVERLAY (Start Screen) */
         .overlay {
             position: fixed;
             inset: 0;
@@ -32,62 +32,64 @@
 
         .btn-tap { 
             border: 2px solid white; 
-            padding: 10px 30px; 
+            padding: 15px 40px; 
             border-radius: 50px; 
             margin-top: 20px; 
             font-weight: bold; 
             text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
-        /* MAIN CONTENT AREA */
+        /* MAIN AREA */
         #content {
             display: none;
             width: 100%;
             height: 100vh;
             background: black;
-            overflow: auto; /* Allow scroll */
+            overflow: auto; 
         }
 
-        /* THE TEXT PORTRAIT MAGIC */
+        /* TEXT PORTRAIT SETTINGS */
         #text-layer {
             width: 100%;
             min-height: 100vh;
             
-            /* FONT SETTINGS - PINALAKI PARA DI MUKHANG STATIC */
-            font-family: 'Arial Black', 'Impact', sans-serif; 
+            /* DITO ANG SOLUSYON SA STATIC SA PC */
+            /* Ang font size ay 1.8% ng width ng screen. 
+               Kaya sa PC malaki ang text, sa CP maliit. 
+               Pero SAME ang itsura at bilang ng letters per line. */
+            font-size: 1.8vw; 
+            
+            /* TIGHT SPACING PARA BUO ANG IMAGE */
+            line-height: 0.8; 
+            letter-spacing: -0.05em; 
+            
             font-weight: 900; 
-            text-transform: uppercase; /* ALL CAPS para mas visible */
+            text-transform: uppercase;
             word-break: break-all;
             text-align: center;
             color: transparent;
 
-            /* IMAGE MASKING */
-            background-image: url('love.jpg');
-            background-size: contain; /* Buong mukha makikita, walang crop */
-            background-position: center top;
+            /* IMAGE BACKGROUND */
+            background-image: url('love.jpg'); /* Siguraduhin na tama ang filename */
+            
+            /* FORCE FULL SCREEN COVERAGE */
+            background-size: cover; 
+            background-position: center;
             background-repeat: no-repeat;
-            background-attachment: local; /* Sasama ang image pag nag-scroll */
+            background-attachment: local; 
             
             -webkit-background-clip: text;
             background-clip: text;
             
-            /* FILTER: ETO ANG SOLUSYON SA MADILIM NA PICTURE */
-            filter: contrast(1.2) brightness(1.3); 
-
-            /* Default PC Size */
-            font-size: 14px; 
-            line-height: 0.85;
-            letter-spacing: -1px;
+            /* Contrast Boost para lumitaw ang mukha */
+            filter: contrast(1.3) brightness(1.2); 
         }
 
-        /* MOBILE ADJUSTMENTS */
+        /* OPTIONAL: Kunting adjust sa mobile kung masyadong malaki */
         @media (max-width: 768px) {
             #text-layer {
-                /* Mas malaki ng onti sa mobile para di maging alikabok tingnan */
-                font-size: 10px; 
-                line-height: 0.8;
-                letter-spacing: -0.5px;
-                background-size: 100% auto; /* Full width sa mobile */
+                font-size: 2.5vw; /* Mas malaki konti sa mobile para readable */
             }
         }
     </style>
@@ -118,17 +120,15 @@
             overlay.style.display = 'none';
             content.style.display = 'block';
             
-            // Play Music
-            audio.play().catch(e => console.log("Audio required interaction"));
+            // Audio Play
+            audio.play().catch(e => console.log("Audio needs interaction"));
 
-            // TEXT GENERATION
-            // Pinalitan ko ng UPPERCASE at paulit-ulit para kumapal
-            const text = "ILOVEYOU "; 
+            // TEXT FILLER
+            const text = "ILOVEYOU"; 
             
-            // Tantyahin ang dami base sa screen size para di lag
-            const repeatCount = window.innerWidth < 768 ? 50000 : 100000;
-            
-            layer.innerText = text.repeat(repeatCount);
+            // Mas kaunti na ang kailangan na repeat kasi malaki na ang font sa PC
+            // Ito ay sapat na para punuin ang screen nang hindi nagla-lag
+            layer.innerText = text.repeat(15000); 
         }
     </script>
 </body>
