@@ -3,112 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>For you Khate💗</title>
+    <title>Para sa Paborito Ko</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            margin: 0;
-            padding: 0;
             background-color: black;
-            display: flex;
-            justify-content: center;
-            /* Tinatanggal ang scroll sa body para sa wrapper lang ang scroll */
-            overflow: hidden; 
+            font-family: 'Arial', sans-serif;
+            overflow: hidden; /* Lock scroll hanggang di tapos ang intro */
         }
 
-        #overlay {
+        /* Full Screen Overlays */
+        #intro-overlay, #message-overlay {
             position: fixed;
             inset: 0;
             background: black;
-            z-index: 999;
+            z-index: 9999;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             color: white;
+            text-align: center;
+            padding: 20px;
             cursor: pointer;
-            font-family: sans-serif;
         }
 
-        /* Dito natin lilitaw ang zoom at scroll control */
+        #message-overlay { display: none; } /* Hidden at first */
+
         .scroll-container {
             width: 100vw;
             height: 100vh;
-            overflow-y: auto; /* Dito lang ang scroll */
-            overflow-x: hidden;
+            overflow-y: auto;
+            display: none; /* Lilitaw lang after clicks */
         }
 
         .wrapper {
             position: relative;
             width: 100%;
-            max-width: 600px; /* Standard portrait width */
+            max-width: 500px; /* Saktong portrait width para zoomed look */
             margin: 0 auto;
-            line-height: 0;
+            background: black;
         }
 
         #textWall {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
-            height: 100%;
-            
-            /* Text Settings - Zoomed and Fine */
+            /* Text Settings para siksik */
             font-family: monospace;
             font-weight: 900;
-            font-size: 5px; /* Ginawa kong 5px para mas zoomed/pino */
-            line-height: 0.8;
-            letter-spacing: -1px;
+            font-size: 5px; 
+            line-height: 0.82;
+            letter-spacing: -0.5px;
             word-break: break-all;
             text-align: justify;
             
             /* Image Masking */
             background-image: url('love.jpg'); 
-            background-size: cover; /* Eto ang nagpapa-zoom sa image sa loob ng text */
-            background-position: center;
+            background-size: 100% 100%; /* Fit sa buong wall */
+            background-repeat: no-repeat;
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            pointer-events: none;
-            z-index: 2;
         }
 
-        /* Ito ang magsasabi sa browser kung kailan titigil ang scroll */
-        .base-image {
+        #guideImg {
             width: 100%;
-            height: auto;
             display: block;
-            visibility: hidden; /* Guide lang siya */
+            visibility: hidden;
         }
+
+        h1 { font-size: 1.5rem; letter-spacing: 2px; margin-bottom: 10px; }
+        p { font-size: 0.8rem; opacity: 0.6; }
     </style>
 </head>
 <body>
 
-    <div id="overlay" onclick="start()">
-        <h1 style="font-weight: 100;">CLICK TO VIEW</h1>
+    <div id="intro-overlay" onclick="showSecondOverlay()">
+        <h1>CLICK TO OPEN 🎁</h1>
+        <p>May sasabihin lang ako...</p>
+    </div>
+
+    <div id="message-overlay" onclick="startEverything()">
+        <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
+        <h1 style="color: #ff4d4d;">I know na hindi ito maganda pero sana nagustuhan mo.</h1>
+        <p>Seryoso, i-tap mo na ulit para sa gift mo.</p>
     </div>
 
     <audio id="bgMusic" loop src="song.mp3"></audio>
 
-    <div class="scroll-container">
+    <div class="scroll-container" id="mainScroll">
         <div class="wrapper">
-            <img src="love.jpg" class="base-image" id="guideImg">
+            <img src="love.jpg" id="guideImg">
             <div id="textWall"></div>
         </div>
     </div>
 
     <script>
-        function start() {
-            document.getElementById('bgMusic').play();
-            document.getElementById('overlay').style.display = 'none';
-            
+        function showSecondOverlay() {
+            document.getElementById('intro-overlay').style.display = 'none';
+            document.getElementById('message-overlay').style.display = 'flex';
+        }
+
+        function startEverything() {
+            const music = document.getElementById('bgMusic');
+            music.play();
+
+            document.getElementById('message-overlay').style.display = 'none';
+            document.getElementById('mainScroll').style.display = 'block';
+            document.body.style.overflow = 'auto'; // Enable scroll na
+
+            fillWithText();
+        }
+
+        function fillWithText() {
             const wall = document.getElementById('textWall');
+            const guide = document.getElementById('guideImg');
             const phrase = "iloveyou";
             
-            // Mas pino na loop para punuin ang screen base sa height ng image
-            // Gagamit tayo ng mas malaking number para sigurado hanggang dulo
-            let content = "";
-            const totalChars = 250000; 
-            wall.innerText = phrase.repeat(totalChars);
+            // Kalkulasyon: Punuin ang wall base sa taas ng image
+            // Para walang itim sa ilalim, dynamic nating kukunin ang characters
+            const containerHeight = guide.clientHeight;
+            const fontSize = 5; 
+            const charactersPerLine = Math.floor(wall.clientWidth / (fontSize * 0.6));
+            const linesNeeded = Math.floor(containerHeight / (fontSize * 0.82));
+            const totalCharsNeeded = (charactersPerLine * linesNeeded);
+
+            let longText = "";
+            const repetitions = Math.ceil(totalCharsNeeded / phrase.length);
+            
+            wall.innerText = phrase.repeat(repetitions + 100); // Buffer para sure
         }
+
+        // I-sync ang text wall height sa image height
+        window.addEventListener('resize', fillWithText);
     </script>
 </body>
 </html>
