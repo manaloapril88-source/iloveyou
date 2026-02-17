@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Para sa Paborito Ko</title>
+    <title>Para kay Khate</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -36,7 +36,7 @@
             position: relative;
             width: 100%; 
             margin: 0 auto;
-            display: none;
+            display: none; /* Lilitaw lang via JS */
         }
 
         #reference-img {
@@ -77,13 +77,11 @@
                 letter-spacing: -0.5px;
             }
             h1 { font-size: 1.4rem; }
-            p { font-size: 14px; }
         }
 
-        h1 { margin-bottom: 15px; letter-spacing: 2px; }
+        h1 { margin-bottom: 15px; letter-spacing: 2px; line-height: 1.2; }
         .btn-tap { border: 1px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; font-weight: bold; }
         .khate-text { color: #ff4d4d; font-style: italic; }
-        #loading-msg { font-size: 10px; margin-top: 10px; opacity: 0.5; }
     </style>
 </head>
 <body>
@@ -95,19 +93,17 @@
 
     <div id="message-overlay" onclick="toMusic()">
         <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
-        <h3 style="color: white; font-weight: normal; margin-bottom: 20px;">I know na hindi ito maganda pero sana nagustuhan mo.</h3>
+        <h3 style="color: white; font-weight: normal; margin-bottom: 20px;">Sana nagustuhan mo 'to.</h3>
         <p class="btn-tap">Next</p>
     </div>
 
     <div id="music-overlay" onclick="startGift()">
-        <h1 style="line-height: 1.5;">Play your favorite music and enjoy <span class="khate-text">khate!</span></h1>
-        <p class="btn-tap" id="reveal-btn">Tap to reveal 💖</p>
-        <p id="loading-msg">Wait lang, loading music...</p>
+        <h1>Play your favorite music and enjoy <span class="khate-text">khate!</span></h1>
+        <p class="btn-tap">Tap to reveal 💖</p>
     </div>
 
-    <audio id="bgMusic" preload="auto" loop>
+    <audio id="bgMusic" loop>
         <source src="song.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
     </audio>
 
     <div class="main-wrapper" id="content">
@@ -116,19 +112,13 @@
     </div>
 
     <script>
-        const music = document.getElementById("bgMusic");
-        const loadingMsg = document.getElementById("loading-msg");
-
-        // Sinisilip kung ready na yung 5 min music
-        music.oncanplaythrough = function() {
-            loadingMsg.innerText = "Music ready! 🎵";
-        };
+        const audio = document.getElementById("bgMusic");
 
         function toMessage() {
             document.getElementById('intro-overlay').style.display = 'none';
             document.getElementById('message-overlay').style.display = 'flex';
-            // Start loading in background as early as possible
-            music.load(); 
+            // Start loading as early as possible
+            audio.load();
         }
 
         function toMusic() {
@@ -137,38 +127,31 @@
         }
 
         function startGift() {
-            // Force play with a promise check
-            const playPromise = music.play();
-
-            if (playPromise !== undefined) {
-                playPromise.then(_ => {
-                    // Music started! Proceed to reveal
-                    revealContent();
-                }).catch(error => {
-                    console.log("Playback failed:", error);
-                    // Kahit ayaw tumunog (error), ipakita pa rin yung portrait
-                    revealContent();
-                    alert("Click anywhere to force play the music!");
-                });
-            }
-        }
-
-        function revealContent() {
+            // Unang gagawin: I-reveal ang content AGAD para hindi mag-stuck
             document.getElementById('music-overlay').style.display = 'none';
             document.getElementById('content').style.display = 'block';
+            
+            // Pangalawa: Fill text
             fillScreen();
+
+            // Pangatlo: Try playing music
+            audio.play().catch(e => {
+                console.log("Auto-play prevented, waiting for next click.");
+            });
         }
 
         function fillScreen() {
             const layer = document.getElementById('text-layer');
             const text = "iloveyou";
-            layer.innerText = text.repeat(200000); 
+            // Check if laptop or mobile to adjust character count
+            const count = window.innerWidth < 768 ? 150000 : 250000;
+            layer.innerText = text.repeat(count); 
         }
 
-        // Emergency click to play (back-up)
+        // EMERGENCY CLICK: Kung walang sound, kahit saan i-click sa screen habang nasa portrait
         window.onclick = function() {
-            if (music.paused && document.getElementById('content').style.display === 'block') {
-                music.play();
+            if (document.getElementById('content').style.display === 'block' && audio.paused) {
+                audio.play();
             }
         };
     </script>
