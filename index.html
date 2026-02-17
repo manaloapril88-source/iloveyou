@@ -2,54 +2,54 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>Para kay Khate</title>
     <style>
+        /* CSS Reset */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             background-color: black;
             font-family: 'Arial', sans-serif;
-            overflow-x: hidden;
             width: 100%;
+            /* Wag muna mag-scroll hanggang di pa nag-start */
+            overflow: hidden; 
         }
 
         /* --- OVERLAYS --- */
-        #intro-overlay, #message-overlay, #music-overlay {
+        .overlay {
             position: fixed;
             inset: 0;
             background: black;
-            z-index: 1000;
+            z-index: 9999;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             color: white;
-            cursor: pointer;
             text-align: center;
             padding: 30px;
+            cursor: pointer;
         }
-
-        #message-overlay, #music-overlay { display: none; } 
 
         /* --- MAIN CONTENT --- */
         .main-wrapper {
             position: relative;
             width: 100%;
-            display: none;
+            display: none; /* Lalabas lang pag na-reveal */
             background: black;
         }
 
-        /* Ito ang magdidikta ng tunay na height ng scroll */
+        /* Dito kumukuha ng height ang scroll */
         #ref-img {
             width: 100%;
             height: auto;
             display: block;
-            visibility: hidden; /* Nakatago pero andyan para sa height */
+            visibility: hidden; 
         }
 
         #text-layer {
-            position: absolute; /* Absolute para sumama sa scroll */
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
@@ -61,9 +61,9 @@
             text-align: justify;
             color: transparent;
 
-            /* Image Settings - Zoomed Look */
+            /* Image Settings */
             background-image: url('love.jpg');
-            background-size: 100% 100%; /* Saktong siksik sa buong scroll area */
+            background-size: 100% 100%; 
             background-repeat: no-repeat;
             background-position: top center;
             
@@ -78,37 +78,37 @@
 
         @media (max-width: 768px) {
             #text-layer {
-                font-size: 4px; /* Mas pino para sa CP */
+                font-size: 4px; 
                 line-height: 0.8;
                 letter-spacing: -0.8px;
             }
-            h1 { font-size: 1.4rem; }
         }
 
-        h1 { margin-bottom: 15px; letter-spacing: 2px; line-height: 1.2; }
-        .btn-tap { border: 1px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; font-weight: bold; }
+        h1 { margin-bottom: 15px; letter-spacing: 2px; line-height: 1.2; font-size: 1.5rem; }
+        .btn-tap { border: 2px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; font-weight: bold; text-transform: uppercase; }
         .khate-text { color: #ff4d4d; font-style: italic; }
     </style>
 </head>
 <body>
 
-    <div id="intro-overlay" onclick="toMessage()">
+    <div id="step1" class="overlay" onclick="showNext('step1', 'step2')">
         <h1>CLICK TO OPEN 🎁</h1>
         <p>(Please turn up your volume 🔊)</p>
+        <div class="btn-tap">Tap here</div>
     </div>
 
-    <div id="message-overlay" onclick="toMusic()">
+    <div id="step2" class="overlay" style="display:none;" onclick="showNext('step2', 'step3')">
         <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
-        <h3 style="color: white; font-weight: normal; margin-bottom: 20px;">I know na hindi ito maganda pero sana nagustuhan mo.</h3>
-        <p class="btn-tap">Next</p>
+        <h3 style="color: white; font-weight: normal;">I know na hindi ito maganda pero sana nagustuhan mo.</h3>
+        <div class="btn-tap">Next</div>
     </div>
 
-    <div id="music-overlay" onclick="startGift()">
+    <div id="step3" class="overlay" style="display:none;" onclick="startGift()">
         <h1>Play your favorite music and enjoy <span class="khate-text">khate!</span></h1>
-        <p class="btn-tap">Tap to reveal 💖</p>
+        <div class="btn-tap">Tap to reveal 💖</div>
     </div>
 
-    <audio id="bgMusic" loop>
+    <audio id="bgMusic" loop preload="auto">
         <source src="song.mp3" type="audio/mpeg">
     </audio>
 
@@ -120,33 +120,27 @@
     <script>
         const audio = document.getElementById("bgMusic");
 
-        function toMessage() {
-            document.getElementById('intro-overlay').style.display = 'none';
-            document.getElementById('message-overlay').style.display = 'flex';
-            audio.load();
-        }
-
-        function toMusic() {
-            document.getElementById('message-overlay').style.display = 'none';
-            document.getElementById('music-overlay').style.display = 'flex';
+        function showNext(current, next) {
+            document.getElementById(current).style.display = 'none';
+            document.getElementById(next).style.display = 'flex';
+            // Warm up audio for mobile
+            audio.play().then(() => { audio.pause(); }).catch(e => {});
         }
 
         function startGift() {
-            document.getElementById('music-overlay').style.display = 'none';
+            document.getElementById('step3').style.display = 'none';
             document.getElementById('content').style.display = 'block';
+            document.body.style.overflow = 'auto'; // Enable scroll
             
-            fillScreen();
-            audio.play().catch(e => console.log("Audio waiting..."));
-        }
-
-        function fillScreen() {
             const layer = document.getElementById('text-layer');
             const text = "iloveyou";
-            // Sobra-sobrahan ang text para kahit gaano kahaba ang image, puno siya
-            layer.innerText = text.repeat(250000); 
+            // Punuin ng text
+            layer.innerText = text.repeat(300000); 
+            
+            audio.play();
         }
 
-        // Emergency play trigger
+        // Click anywhere listener para sa music backup
         window.onclick = function() {
             if (document.getElementById('content').style.display === 'block' && audio.paused) {
                 audio.play();
