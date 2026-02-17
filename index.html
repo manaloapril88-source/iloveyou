@@ -5,48 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>For My Love</title>
     <style>
-        /* Pinaka-background ng page */
         body {
             margin: 0;
             padding: 0;
-            background-color: black; /* Black background */
-            overflow-x: hidden; 
+            background-color: black;
+            overflow-x: hidden;
         }
 
         .ascii-art {
-            /* 1. Dito ilagay ang file name ng photo */
+            /* 1. Palitan ang filename kung kailangan */
             background-image: url('love.jpg'); 
             
-            /* 2. Full Picture Settings */
-            background-size: contain; /* Para buo ang picture at hindi putol */
+            /* 2. Fix para sumama sa scroll */
+            background-size: 100% auto; /* Kakasya sa width, auto ang haba */
             background-repeat: no-repeat;
-            background-position: center top;
-            background-attachment: fixed;
+            background-position: top center;
+            background-attachment: scroll; /* Ito ang binago para sumama sa scroll */
 
-            /* 3. Magic: Gagawing text ang image */
+            /* 3. Text Masking */
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
 
-            /* 4. Text Style */
+            /* 4. Font Styling */
             font-family: 'Courier New', monospace;
             font-weight: 900;
-            font-size: 8px; /* Mas maliit, mas detailed ang mukha */
-            line-height: 0.8;
+            font-size: 8px; 
+            line-height: 0.85;
             letter-spacing: -1px;
             
-            /* Pinupuno ang buong space */
             width: 100%;
-            min-height: 200vh; /* Ginawa kong mahaba para sa scrolling */
+            /* Pinapahaba ang div para magkasya yung buong image habang nag-scroll */
+            min-height: 500vh; 
             word-break: break-all;
             text-align: justify;
-            white-space: normal;
         }
 
-        /* Responsive para sa mobile */
         @media (max-width: 600px) {
             .ascii-art {
-                font-size: 5px; 
+                font-size: 5px;
+                line-height: 0.7;
             }
         }
     </style>
@@ -59,9 +57,8 @@
         const container = document.getElementById('textWall');
         const textToRepeat = "iloveyou";
         
-        // Pinupuno natin ang wall ng text base sa haba ng page
-        // 80,000 characters para sigurado kahit mahaba ang scroll
-        container.innerText = textToRepeat.repeat(100000);
+        // Dinamihan ko lalo ang repeat para hindi magkulang ang text hanggang dulo ng scroll
+        container.innerText = textToRepeat.repeat(200000);
     </script>
 
 </body>
