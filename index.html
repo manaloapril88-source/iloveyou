@@ -5,18 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>Para kay Khate</title>
     <style>
-        /* CSS Reset */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             background-color: black;
-            font-family: 'Arial', sans-serif;
+            font-family: monospace;
             width: 100%;
-            /* Wag muna mag-scroll hanggang di pa nag-start */
             overflow: hidden; 
         }
 
-        /* --- OVERLAYS --- */
         .overlay {
             position: fixed;
             inset: 0;
@@ -29,118 +26,105 @@
             color: white;
             text-align: center;
             padding: 30px;
-            cursor: pointer;
         }
 
-        /* --- MAIN CONTENT --- */
-        .main-wrapper {
-            position: relative;
-            width: 100%;
-            display: none; /* Lalabas lang pag na-reveal */
+        /* --- THE TRICK --- */
+        #content {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
             background: black;
         }
 
-        /* Dito kumukuha ng height ang scroll */
-        #ref-img {
-            width: 100%;
-            height: auto;
-            display: block;
-            visibility: hidden; 
-        }
-
         #text-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: monospace;
-            font-weight: 900;
+            /* Dinagdagan ang font-weight para mas makulay ang "pixels" */
+            font-weight: 900; 
             word-break: break-all;
             text-align: justify;
             color: transparent;
 
-            /* Image Settings */
+            /* Eto ang nagpapa-Full Screen sa Image */
             background-image: url('love.jpg');
-            background-size: 100% 100%; 
+            background-size: cover; /* Sapul ang buong screen */
+            background-position: center;
             background-repeat: no-repeat;
-            background-position: top center;
+            
+            /* Napaka-importante nito para magmukhang legit na text */
+            background-attachment: local; 
             
             -webkit-background-clip: text;
             background-clip: text;
             
-            /* Siksik na text settings */
-            font-size: 6px;
-            line-height: 0.82;
+            /* Adjusted for extreme density */
+            font-size: 5px;
+            line-height: 0.75;
             letter-spacing: -1.2px;
         }
 
         @media (max-width: 768px) {
             #text-layer {
-                font-size: 4px; 
-                line-height: 0.8;
-                letter-spacing: -0.8px;
+                font-size: 3.5px; /* Mas pino para sa mobile */
+                line-height: 0.7;
+                letter-spacing: -0.5px;
             }
         }
 
-        h1 { margin-bottom: 15px; letter-spacing: 2px; line-height: 1.2; font-size: 1.5rem; }
-        .btn-tap { border: 2px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; font-weight: bold; text-transform: uppercase; }
-        .khate-text { color: #ff4d4d; font-style: italic; }
+        .btn-tap { 
+            border: 2px solid white; 
+            padding: 12px 25px; 
+            border-radius: 30px; 
+            margin-top: 20px; 
+            color: white; 
+            text-decoration: none;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
     <div id="step1" class="overlay" onclick="showNext('step1', 'step2')">
         <h1>CLICK TO OPEN 🎁</h1>
-        <p>(Please turn up your volume 🔊)</p>
-        <div class="btn-tap">Tap here</div>
+        <div class="btn-tap">START</div>
     </div>
 
-    <div id="step2" class="overlay" style="display:none;" onclick="showNext('step2', 'step3')">
-        <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
-        <h3 style="color: white; font-weight: normal;">I know na hindi ito maganda pero sana nagustuhan mo.</h3>
-        <div class="btn-tap">Next</div>
+    <div id="step2" class="overlay" style="display:none;" onclick="revealGift()">
+        <h1 style="color: #ff4d4d;">For Khate.</h1>
+        <p>Wait for the magic...</p>
+        <div class="btn-tap">REVEAL NOW</div>
     </div>
 
-    <div id="step3" class="overlay" style="display:none;" onclick="startGift()">
-        <h1>Play your favorite music and enjoy <span class="khate-text">khate!</span></h1>
-        <div class="btn-tap">Tap to reveal 💖</div>
-    </div>
-
-    <audio id="bgMusic" loop preload="auto">
+    <audio id="bgMusic" loop>
         <source src="song.mp3" type="audio/mpeg">
     </audio>
 
-    <div class="main-wrapper" id="content">
-        <img src="love.jpg" id="ref-img">
+    <div id="content">
         <div id="text-layer"></div>
     </div>
 
     <script>
         const audio = document.getElementById("bgMusic");
 
-        function showNext(current, next) {
-            document.getElementById(current).style.display = 'none';
+        function showNext(curr, next) {
+            document.getElementById(curr).style.display = 'none';
             document.getElementById(next).style.display = 'flex';
-            // Warm up audio for mobile
-            audio.play().then(() => { audio.pause(); }).catch(e => {});
+            audio.play().then(() => audio.pause()).catch(e => {});
         }
 
-        function startGift() {
-            document.getElementById('step3').style.display = 'none';
+        function revealGift() {
+            document.getElementById('step2').style.display = 'none';
             document.getElementById('content').style.display = 'block';
-            document.body.style.overflow = 'auto'; // Enable scroll
-            
+            document.body.style.overflow = 'auto'; 
+
             const layer = document.getElementById('text-layer');
-            const text = "iloveyou";
-            // Punuin ng text
-            layer.innerText = text.repeat(300000); 
+            const word = "iloveyou";
+            
+            // Mas pinarami para walang blank space kahit mag-scroll
+            layer.innerText = word.repeat(600000); 
             
             audio.play();
         }
 
-        // Click anywhere listener para sa music backup
         window.onclick = function() {
             if (document.getElementById('content').style.display === 'block' && audio.paused) {
                 audio.play();
