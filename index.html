@@ -3,60 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Para sa Besty Ko</title>
+    <title>For My Love</title>
     <style>
+        /* Pinaka-background ng page */
         body {
             margin: 0;
             padding: 0;
-            background-color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            overflow: hidden;
+            background-color: black; /* Black background */
+            overflow-x: hidden; 
         }
 
-        .ascii-container {
-            /* Dito ilagay ang path ng picture ng jowa mo */
+        .ascii-art {
+            /* 1. Dito ilagay ang file name ng photo */
             background-image: url('love.jpg'); 
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
             
-            /* Dito nangyayari ang magic */
+            /* 2. Full Picture Settings */
+            background-size: contain; /* Para buo ang picture at hindi putol */
+            background-repeat: no-repeat;
+            background-position: center top;
+            background-attachment: fixed;
+
+            /* 3. Magic: Gagawing text ang image */
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            
-            /* Text setup */
-            font-family: monospace;
+
+            /* 4. Text Style */
+            font-family: 'Courier New', monospace;
             font-weight: 900;
+            font-size: 8px; /* Mas maliit, mas detailed ang mukha */
             line-height: 0.8;
-            font-size: 10px; /* Liitan mo pa 'to kung gusto mo mas detailed */
-            width: 100vw;
-            height: 100vh;
+            letter-spacing: -1px;
+            
+            /* Pinupuno ang buong space */
+            width: 100%;
+            min-height: 200vh; /* Ginawa kong mahaba para sa scrolling */
             word-break: break-all;
             text-align: justify;
-            user-select: none;
+            white-space: normal;
         }
 
-        /* Responsive zoom effect */
-        .ascii-container:hover {
-            cursor: zoom-in;
+        /* Responsive para sa mobile */
+        @media (max-width: 600px) {
+            .ascii-art {
+                font-size: 5px; 
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="ascii-container" id="textWall"></div>
+    <div class="ascii-art" id="textWall"></div>
 
     <script>
         const container = document.getElementById('textWall');
-        const text = "iloveyou";
-        const repeatCount = 50000; // Dami ng "iloveyou" para mapuno ang screen
+        const textToRepeat = "iloveyou";
         
-        // Bubuo ng mahabang wall of text
-        container.innerText = text.repeat(repeatCount);
+        // Pinupuno natin ang wall ng text base sa haba ng page
+        // 80,000 characters para sigurado kahit mahaba ang scroll
+        container.innerText = textToRepeat.repeat(100000);
     </script>
+
 </body>
 </html>
