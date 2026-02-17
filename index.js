@@ -1,78 +1,71 @@
-import express from 'express';
-import multer from 'multer';
-import { Groq } from 'groq-sdk';
-import fs from 'fs';
-import path from 'path';
-import cors from 'cors';
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Text Portrait Auto</title>
+<style>
+  body {
+    background: black;
+    color: white;
+    font-family: monospace;
+    white-space: pre;
+    font-size: 5px;
+    line-height: 5px;
+  }
+</style>
+</head>
+<body>
 
-const app = express();
-const upload = multer({ dest: 'uploads/' });
-const port = process.env.PORT || 3000;
+<pre id="output"></pre>
 
-// Hardcoded API Key (As requested)
-const GROQ_API_KEY = "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";
-const groq = new Groq({ apiKey: GROQ_API_KEY });
+<script>
+const output = document.getElementById("output");
+const img = new Image();
 
-app.use(cors());
-app.use(express.json());
+// DITO naka-set agad image mo
+img.src = "love.jpg"; 
 
-// Main Endpoint para sa ESP32
-app.post('/process-voice', upload.single('audio'), async (req, res) => {
-    const audioPath = req.file.path;
+img.onload = function() {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
 
-    try {
-        // 1. STT: Transcribe the user's voice
-        const transcription = await groq.audio.transcriptions.create({
-            file: fs.createReadStream(audioPath),
-            model: "whisper-large-v3-turbo",
-            response_format: "verbose_json",
-        });
+  const WIDTH = 160;
+  const ratio = img.height / img.width;
+  canvas.width = WIDTH;
+  canvas.height = WIDTH * ratio;
 
-        const userText = transcription.text;
-        console.log("User said:", userText);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // 2. LLM: Process with Groq (Strict English, 1 sentence only)
-        const chatCompletion = await groq.chat.completions.create({
-            messages: [
-                {
-                    "role": "system",
-                    "content": "You are Stella, a helpful AI assistant. You can understand Tagalog but you MUST ALWAYS respond in English. Your response must be very short, exactly one sentence only."
-                },
-                { "role": "user", "content": userText }
-            ],
-            model: "llama-3.1-70b-versatile", // Stable model for logic
-            temperature: 0.7,
-            max_tokens: 50,
-        });
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
 
-        const aiResponse = chatCompletion.choices[0]?.message?.content || "I didn't catch that.";
-        console.log("Stella response:", aiResponse);
+  const TEXT = "ILOVEYOU";
+  let textIndex = 0;
+  let result = "";
 
-        // 3. TTS: Convert AI text to Speech
-        const speechFile = path.resolve(`./uploads/res_${req.file.filename}.wav`);
-        const wav = await groq.audio.speech.create({
-            model: "canopylabs/orpheus-v1-english",
-            voice: "autumn",
-            response_format: "wav",
-            input: aiResponse,
-        });
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      const i = (y * canvas.width + x) * 4;
+      const r = data[i];
+      const g = data[i+1];
+      const b = data[i+2];
 
-        const buffer = Buffer.from(await wav.arrayBuffer());
-        await fs.promises.writeFile(speechFile, buffer);
+      const brightness = (r + g + b) / 3;
 
-        // Ipadala ang audio file pabalik sa ESP32
-        res.sendFile(speechFile, () => {
-            // Delete files after sending para hindi ma-full ang server storage
-            if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
-            if (fs.existsSync(speechFile)) fs.unlinkSync(speechFile);
-        });
+      let char = " ";
+      if (brightness < 210) {
+        char = TEXT[textIndex % TEXT.length];
+        textIndex++;
+      }
 
-    } catch (error) {
-        console.error("Error:", error);
-        res.status(500).json({ error: "Processing failed" });
+      result += char;
     }
-});
+    result += "\n";
+  }
 
-app.listen(port, () => {
-    console.log(`Stella AI API running on port ${port}`);
-});
+  output.textContent = result;
+};
+</script>
+
+</body>
+</html>
