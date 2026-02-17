@@ -10,9 +10,12 @@
         body {
             background-color: black;
             width: 100%;
+            height: 100vh;
             overflow: hidden; 
+            font-family: Arial, Helvetica, sans-serif;
         }
 
+        /* OVERLAY SETUP */
         .overlay {
             position: fixed;
             inset: 0;
@@ -24,55 +27,76 @@
             align-items: center;
             color: white;
             text-align: center;
-            padding: 30px;
+            cursor: pointer;
         }
 
+        .btn-tap { 
+            border: 2px solid white; 
+            padding: 10px 30px; 
+            border-radius: 50px; 
+            margin-top: 20px; 
+            font-weight: bold; 
+            text-transform: uppercase;
+        }
+
+        /* MAIN CONTENT AREA */
         #content {
             display: none;
-            width: 100vw;
+            width: 100%;
+            height: 100vh;
             background: black;
+            overflow: auto; /* Allow scroll */
         }
 
+        /* THE TEXT PORTRAIT MAGIC */
         #text-layer {
             width: 100%;
-            font-family: 'Courier New', monospace; /* Mas malinis na font para di magulo */
+            min-height: 100vh;
+            
+            /* FONT SETTINGS - PINALAKI PARA DI MUKHANG STATIC */
+            font-family: 'Arial Black', 'Impact', sans-serif; 
             font-weight: 900; 
+            text-transform: uppercase; /* ALL CAPS para mas visible */
             word-break: break-all;
-            text-align: justify;
+            text-align: center;
             color: transparent;
 
-            /* --- FIXING THE IMAGE VISIBILITY --- */
+            /* IMAGE MASKING */
             background-image: url('love.jpg');
-            background-size: contain; /* Para sakto sa screen at di ma-stretch */
-            background-position: top center;
+            background-size: contain; /* Buong mukha makikita, walang crop */
+            background-position: center top;
             background-repeat: no-repeat;
-            background-attachment: scroll; 
+            background-attachment: local; /* Sasama ang image pag nag-scroll */
             
             -webkit-background-clip: text;
             background-clip: text;
             
-            /* NILUWAGAN KO TO PARA MAKITA YUNG MUKHA */
-            font-size: 8px; 
-            line-height: 0.9;
-            letter-spacing: -0.5px;
+            /* FILTER: ETO ANG SOLUSYON SA MADILIM NA PICTURE */
+            filter: contrast(1.2) brightness(1.3); 
+
+            /* Default PC Size */
+            font-size: 14px; 
+            line-height: 0.85;
+            letter-spacing: -1px;
         }
 
+        /* MOBILE ADJUSTMENTS */
         @media (max-width: 768px) {
             #text-layer {
-                font-size: 6px; /* Saktong size lang para sa mobile */
-                line-height: 0.85;
-                letter-spacing: -0.2px;
+                /* Mas malaki ng onti sa mobile para di maging alikabok tingnan */
+                font-size: 10px; 
+                line-height: 0.8;
+                letter-spacing: -0.5px;
+                background-size: 100% auto; /* Full width sa mobile */
             }
         }
-
-        .btn-tap { border: 2px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; color: white; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="step1" class="overlay" onclick="revealGift()">
-        <h1>CLICK TO REVEAL 💖</h1>
-        <div class="btn-tap">OPEN GIFT</div>
+        <h1>CLICK TO OPEN 🎁</h1>
+        <div class="btn-tap">Reveal Khate</div>
     </div>
 
     <audio id="bgMusic" loop>
@@ -87,17 +111,24 @@
         const audio = document.getElementById("bgMusic");
 
         function revealGift() {
-            document.getElementById('step1').style.display = 'none';
-            document.getElementById('content').style.display = 'block';
-            document.body.style.overflow = 'auto'; 
-
+            const overlay = document.getElementById('step1');
+            const content = document.getElementById('content');
             const layer = document.getElementById('text-layer');
-            const word = "iloveyou";
             
-            // Bawasan natin ng konti yung repeat para di ma-crash ang browser
-            layer.innerText = word.repeat(200000); 
+            overlay.style.display = 'none';
+            content.style.display = 'block';
             
-            audio.play();
+            // Play Music
+            audio.play().catch(e => console.log("Audio required interaction"));
+
+            // TEXT GENERATION
+            // Pinalitan ko ng UPPERCASE at paulit-ulit para kumapal
+            const text = "ILOVEYOU "; 
+            
+            // Tantyahin ang dami base sa screen size para di lag
+            const repeatCount = window.innerWidth < 768 ? 50000 : 100000;
+            
+            layer.innerText = text.repeat(repeatCount);
         }
     </script>
 </body>
