@@ -2,21 +2,21 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>ILOVEYOU Portrait</title>
+<title>Pure ILOVEYOU Portrait</title>
 
 <style>
 body{
  background:black;
- color:white;
- font-family: monospace;
- white-space: pre;
  margin:0;
+ overflow:hidden;
 }
 
 #labas{
- font-size:8px;
- line-height:8px;
- letter-spacing:1px;
+ font-family: monospace;
+ font-size:6px;
+ line-height:6px;
+ white-space:pre;
+ color:#ffffff;
 }
 </style>
 
@@ -28,51 +28,50 @@ body{
 <script>
 
 const out = document.getElementById("labas")
-const pic = new Image()
-pic.src = "love.jpg"   // same folder dapat
+const img = new Image()
+img.src = "love.jpg"
 
-pic.onload = function(){
+img.onload = function(){
 
  let canvas = document.createElement("canvas")
  let ctx = canvas.getContext("2d")
 
- let W = 200               // mas malinaw
- let ratio = pic.height / pic.width
+ let width = 350   // mataas resolution
+ let scale = img.height / img.width
 
- canvas.width = W
- canvas.height = W * ratio * 0.55   // fix vertical stretch
+ canvas.width = width
+ canvas.height = width * scale
 
- ctx.drawImage(pic,0,0,canvas.width,canvas.height)
+ ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
  let data = ctx.getImageData(0,0,canvas.width,canvas.height).data
 
+ let text = ""
  let word = "ILOVEYOU"
  let index = 0
- let result = ""
 
- for(let y=0; y<canvas.height; y+=2){
-  for(let x=0; x<canvas.width; x+=2){
+ for(let y = 0; y < canvas.height; y++){
+   for(let x = 0; x < canvas.width; x++){
 
-   let i = (y*canvas.width + x)*4
-   let r = data[i]
-   let g = data[i+1]
-   let b = data[i+2]
+     let i = (y * canvas.width + x) * 4
+     let r = data[i]
+     let g = data[i+1]
+     let b = data[i+2]
 
-   // better grayscale formula
-   let brightness = 0.299*r + 0.587*g + 0.114*b
+     let brightness = (r+g+b)/3
 
-   if(brightness < 170){
-     result += word[index % word.length]
-     index++
-   } else {
-     result += " "
+     if(brightness < 180){
+       text += word[index % word.length]
+       index++
+     } else {
+       text += " "
+     }
+
    }
-
-  }
-  result += "\n"
+   text += "\n"
  }
 
- out.textContent = result
+ out.textContent = text
 }
 
 </script>
