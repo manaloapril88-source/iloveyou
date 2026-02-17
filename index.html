@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Para sa Paborito Ko</title>
     <style>
-        /* RESET */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
@@ -33,7 +32,6 @@
 
         #message-overlay, #music-overlay { display: none; } 
 
-        /* --- MAIN CONTAINER --- */
         .main-wrapper {
             position: relative;
             width: 100%; 
@@ -55,13 +53,11 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            
             font-family: monospace;
             font-weight: 900;
             word-break: break-all;
             text-align: justify;
             color: transparent;
-
             background-image: url('love.jpg');
             background-size: 100% 100%;
             background-repeat: no-repeat;
@@ -69,14 +65,11 @@
             -webkit-background-clip: text;
             background-clip: text;
             pointer-events: none; 
-
-            /* Laptop View */
             font-size: 8px;
             line-height: 0.8; 
             letter-spacing: -1px;
         }
 
-        /* AUTO ADJUST PARA SA CP */
         @media (max-width: 768px) {
             #text-layer {
                 font-size: 4px;
@@ -90,7 +83,7 @@
         h1 { margin-bottom: 15px; letter-spacing: 2px; }
         .btn-tap { border: 1px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; font-weight: bold; }
         .khate-text { color: #ff4d4d; font-style: italic; }
-
+        #loading-msg { font-size: 10px; margin-top: 10px; opacity: 0.5; }
     </style>
 </head>
 <body>
@@ -108,11 +101,13 @@
 
     <div id="music-overlay" onclick="startGift()">
         <h1 style="line-height: 1.5;">Play your favorite music and enjoy <span class="khate-text">khate!</span></h1>
-        <p class="btn-tap">Tap to reveal 💖</p>
+        <p class="btn-tap" id="reveal-btn">Tap to reveal 💖</p>
+        <p id="loading-msg">Wait lang, loading music...</p>
     </div>
 
-    <audio id="bgMusic" loop>
+    <audio id="bgMusic" preload="auto" loop>
         <source src="song.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
     </audio>
 
     <div class="main-wrapper" id="content">
@@ -121,9 +116,19 @@
     </div>
 
     <script>
+        const music = document.getElementById("bgMusic");
+        const loadingMsg = document.getElementById("loading-msg");
+
+        // Sinisilip kung ready na yung 5 min music
+        music.oncanplaythrough = function() {
+            loadingMsg.innerText = "Music ready! 🎵";
+        };
+
         function toMessage() {
             document.getElementById('intro-overlay').style.display = 'none';
             document.getElementById('message-overlay').style.display = 'flex';
+            // Start loading in background as early as possible
+            music.load(); 
         }
 
         function toMusic() {
@@ -132,21 +137,40 @@
         }
 
         function startGift() {
-            var audio = document.getElementById("bgMusic");
-            audio.play().catch(error => { console.log("Audio play blocked"); });
+            // Force play with a promise check
+            const playPromise = music.play();
 
+            if (playPromise !== undefined) {
+                playPromise.then(_ => {
+                    // Music started! Proceed to reveal
+                    revealContent();
+                }).catch(error => {
+                    console.log("Playback failed:", error);
+                    // Kahit ayaw tumunog (error), ipakita pa rin yung portrait
+                    revealContent();
+                    alert("Click anywhere to force play the music!");
+                });
+            }
+        }
+
+        function revealContent() {
             document.getElementById('music-overlay').style.display = 'none';
             document.getElementById('content').style.display = 'block';
-
             fillScreen();
         }
 
         function fillScreen() {
             const layer = document.getElementById('text-layer');
             const text = "iloveyou";
-            // Overfill to ensure no black spaces on any screen
             layer.innerText = text.repeat(200000); 
         }
+
+        // Emergency click to play (back-up)
+        window.onclick = function() {
+            if (music.paused && document.getElementById('content').style.display === 'block') {
+                music.play();
+            }
+        };
     </script>
 </body>
 </html>
