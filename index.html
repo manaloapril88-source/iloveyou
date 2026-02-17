@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Para kay Khate</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             background-color: black;
-            font-family: monospace;
             width: 100%;
             overflow: hidden; 
         }
@@ -28,70 +27,52 @@
             padding: 30px;
         }
 
-        /* --- THE TRICK --- */
         #content {
             display: none;
             width: 100vw;
-            min-height: 100vh;
             background: black;
         }
 
         #text-layer {
             width: 100%;
-            /* Dinagdagan ang font-weight para mas makulay ang "pixels" */
+            font-family: 'Courier New', monospace; /* Mas malinis na font para di magulo */
             font-weight: 900; 
             word-break: break-all;
             text-align: justify;
             color: transparent;
 
-            /* Eto ang nagpapa-Full Screen sa Image */
+            /* --- FIXING THE IMAGE VISIBILITY --- */
             background-image: url('love.jpg');
-            background-size: cover; /* Sapul ang buong screen */
-            background-position: center;
+            background-size: contain; /* Para sakto sa screen at di ma-stretch */
+            background-position: top center;
             background-repeat: no-repeat;
-            
-            /* Napaka-importante nito para magmukhang legit na text */
-            background-attachment: local; 
+            background-attachment: scroll; 
             
             -webkit-background-clip: text;
             background-clip: text;
             
-            /* Adjusted for extreme density */
-            font-size: 5px;
-            line-height: 0.75;
-            letter-spacing: -1.2px;
+            /* NILUWAGAN KO TO PARA MAKITA YUNG MUKHA */
+            font-size: 8px; 
+            line-height: 0.9;
+            letter-spacing: -0.5px;
         }
 
         @media (max-width: 768px) {
             #text-layer {
-                font-size: 3.5px; /* Mas pino para sa mobile */
-                line-height: 0.7;
-                letter-spacing: -0.5px;
+                font-size: 6px; /* Saktong size lang para sa mobile */
+                line-height: 0.85;
+                letter-spacing: -0.2px;
             }
         }
 
-        .btn-tap { 
-            border: 2px solid white; 
-            padding: 12px 25px; 
-            border-radius: 30px; 
-            margin-top: 20px; 
-            color: white; 
-            text-decoration: none;
-            font-weight: bold;
-        }
+        .btn-tap { border: 2px solid white; padding: 12px 25px; border-radius: 30px; margin-top: 20px; color: white; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="step1" class="overlay" onclick="showNext('step1', 'step2')">
-        <h1>CLICK TO OPEN 🎁</h1>
-        <div class="btn-tap">START</div>
-    </div>
-
-    <div id="step2" class="overlay" style="display:none;" onclick="revealGift()">
-        <h1 style="color: #ff4d4d;">For Khate.</h1>
-        <p>Wait for the magic...</p>
-        <div class="btn-tap">REVEAL NOW</div>
+    <div id="step1" class="overlay" onclick="revealGift()">
+        <h1>CLICK TO REVEAL 💖</h1>
+        <div class="btn-tap">OPEN GIFT</div>
     </div>
 
     <audio id="bgMusic" loop>
@@ -105,31 +86,19 @@
     <script>
         const audio = document.getElementById("bgMusic");
 
-        function showNext(curr, next) {
-            document.getElementById(curr).style.display = 'none';
-            document.getElementById(next).style.display = 'flex';
-            audio.play().then(() => audio.pause()).catch(e => {});
-        }
-
         function revealGift() {
-            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step1').style.display = 'none';
             document.getElementById('content').style.display = 'block';
             document.body.style.overflow = 'auto'; 
 
             const layer = document.getElementById('text-layer');
             const word = "iloveyou";
             
-            // Mas pinarami para walang blank space kahit mag-scroll
-            layer.innerText = word.repeat(600000); 
+            // Bawasan natin ng konti yung repeat para di ma-crash ang browser
+            layer.innerText = word.repeat(200000); 
             
             audio.play();
         }
-
-        window.onclick = function() {
-            if (document.getElementById('content').style.display === 'block' && audio.paused) {
-                audio.play();
-            }
-        };
     </script>
 </body>
 </html>
