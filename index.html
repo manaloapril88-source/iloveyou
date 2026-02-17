@@ -10,10 +10,11 @@
         body {
             background-color: black;
             font-family: 'Arial', sans-serif;
-            overflow-x: hidden;
+            overflow: hidden;
             width: 100%;
-            height: 100vh;
+            height: 100dvh;
             touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* --- OVERLAYS --- */
@@ -27,9 +28,10 @@
             justify-content: center;
             align-items: center;
             color: white;
-            cursor: pointer;
             text-align: center;
             padding: 30px;
+            cursor: pointer;
+            pointer-events: auto;
         }
         #message-overlay { display: none; }
 
@@ -37,7 +39,7 @@
         .main-wrapper {
             position: relative;
             width: 100%;
-            height: 100vh;
+            height: 100dvh;
             margin: 0 auto;
             display: none;
         }
@@ -77,49 +79,51 @@
                 line-height: 0.75;
                 letter-spacing: -0.5px;
             }
-            h1 { font-size: 1.4rem; }
-            h3 { font-size: 1rem; }
+            h1 { font-size: 1.6rem; }
+            h3 { font-size: 1.1rem; }
         }
 
-        h1 { margin-bottom: 15px; letter-spacing: 2px; }
+        h1 { margin-bottom: 20px; letter-spacing: 2px; }
         
         .btn-tap {
             border: 2px solid white;
-            padding: 18px 40px;
+            padding: 20px 50px;
             border-radius: 50px;
-            background: rgba(255, 77, 77, 0.2);
+            background: rgba(255, 77, 77, 0.3);
             color: white;
-            font-size: 1.3rem;
+            font-size: 1.5rem;
             font-weight: bold;
             cursor: pointer;
-            min-width: 80%;
-            max-width: 90%;
+            min-width: 85%;
+            max-width: 95%;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
             letter-spacing: 1px;
-            transition: all 0.15s ease;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+            z-index: 1002;
         }
 
         .btn-tap:active {
-            background: rgba(255, 77, 77, 0.5);
-            transform: scale(0.96);
+            background: rgba(255, 77, 77, 0.7);
+            transform: scale(0.95);
         }
     </style>
 </head>
 <body>
 
-    <div id="intro-overlay" onclick="toMessage()">
+    <div id="intro-overlay">
         <h1>CLICK TO OPEN 🎁</h1>
         <p>(Please turn up your volume 🔊)</p>
     </div>
 
     <div id="message-overlay">
         <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
-        <h3 style="color: white; font-weight: normal; margin-bottom: 30px;">
+        <h3 style="color: white; font-weight: normal; margin-bottom: 35px;">
             I know na hindi ito maganda pero sana nagustuhan mo.
         </h3>
-        <button class="btn-tap" onclick="startGift()">
+        <button class="btn-tap" id="surpriseBtn">
             Tap here to see the surprise →
         </button>
     </div>
@@ -135,38 +139,59 @@
     </div>
 
     <script>
+        // Intro overlay click/tap
+        const intro = document.getElementById('intro-overlay');
+        intro.addEventListener('click', toMessage);
+        intro.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            toMessage();
+        }, { passive: false });
+
         function toMessage() {
             document.getElementById('intro-overlay').style.display = 'none';
             document.getElementById('message-overlay').style.display = 'flex';
         }
 
+        // Message overlay + button handling
+        const messageOverlay = document.getElementById('message-overlay');
+        const surpriseBtn = document.getElementById('surpriseBtn');
+
+        // Make whole overlay tappable as backup
+        messageOverlay.addEventListener('click', startGift);
+        messageOverlay.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            startGift();
+        }, { passive: false });
+
+        // Button specific (primary trigger)
+        surpriseBtn.addEventListener('click', startGift);
+        surpriseBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            startGift();
+        }, { passive: false });
+
         async function startGift() {
             const audio = document.getElementById("bgMusic");
             
             try {
-                // Play directly inside the user gesture (button click/tap)
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     await playPromise;
-                    console.log("Audio started playing!");
+                    console.log("Audio started!");
                 }
             } catch (err) {
                 console.error("Audio play failed:", err);
-                // Optional: you can show a message if needed
-                // alert("Hindi mag-play ang audio. I-check ang volume o subukang i-tap ulit.");
+                // Optional: alert("Audio hindi nag-play. Subukang i-tap ulit o check volume.");
             }
 
-            // Proceed anyway (show content even if audio fails)
             document.getElementById('message-overlay').style.display = 'none';
             document.getElementById('content').style.display = 'block';
-            
             fillScreen();
         }
 
         function fillScreen() {
             const layer = document.getElementById('text-layer');
             const text = "iloveyou";
-            // Adjusted repeat count — sapat na para puno pero hindi sobrang bigat
             layer.innerText = text.repeat(60000);
         }
     </script>
