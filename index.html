@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>For You Khate</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para kay Khate</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -37,12 +37,19 @@
             position: relative;
             width: 100%;
             display: none;
-            /* Ito ang magdidikta kung gaano kahaba ang scroll sa CP */
-            height: 300vh; 
+            background: black;
+        }
+
+        /* Ito ang magdidikta ng tunay na height ng scroll */
+        #ref-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            visibility: hidden; /* Nakatago pero andyan para sa height */
         }
 
         #text-layer {
-            position: fixed; /* Naka-fix para habang nag-scroll, nandun lang ang image */
+            position: absolute; /* Absolute para sumama sa scroll */
             top: 0;
             left: 0;
             width: 100%;
@@ -54,37 +61,26 @@
             text-align: justify;
             color: transparent;
 
+            /* Image Settings - Zoomed Look */
             background-image: url('love.jpg');
-            background-size: cover; /* Eto ang magpapa-Full Screen sa CP nang hindi stretched */
-            background-position: center;
+            background-size: 100% 100%; /* Saktong siksik sa buong scroll area */
             background-repeat: no-repeat;
-            background-attachment: fixed;
+            background-position: top center;
             
             -webkit-background-clip: text;
             background-clip: text;
             
             /* Siksik na text settings */
-            font-size: 5px;
-            line-height: 0.8;
-            letter-spacing: -1px;
-            z-index: 1;
-        }
-
-        /* Scroll Progress Bar (Para alam niyang nag-scroll siya) */
-        #progress {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 4px;
-            background: #ff4d4d;
-            z-index: 1001;
-            width: 0%;
+            font-size: 6px;
+            line-height: 0.82;
+            letter-spacing: -1.2px;
         }
 
         @media (max-width: 768px) {
             #text-layer {
-                font-size: 4px; /* Mas pino para sa mobile screen */
-                line-height: 0.75;
+                font-size: 4px; /* Mas pino para sa CP */
+                line-height: 0.8;
+                letter-spacing: -0.8px;
             }
             h1 { font-size: 1.4rem; }
         }
@@ -96,8 +92,6 @@
 </head>
 <body>
 
-    <div id="progress"></div>
-
     <div id="intro-overlay" onclick="toMessage()">
         <h1>CLICK TO OPEN 🎁</h1>
         <p>(Please turn up your volume 🔊)</p>
@@ -105,7 +99,7 @@
 
     <div id="message-overlay" onclick="toMusic()">
         <h1 style="color: #ff4d4d;">You're my favorite person.</h1>
-        <h3 style="color: white; font-weight: normal; margin-bottom: 20px;">Sana nagustuhan mo 'to.</h3>
+        <h3 style="color: white; font-weight: normal; margin-bottom: 20px;">I know na hindi ito maganda pero sana nagustuhan mo.</h3>
         <p class="btn-tap">Next</p>
     </div>
 
@@ -119,6 +113,7 @@
     </audio>
 
     <div class="main-wrapper" id="content">
+        <img src="love.jpg" id="ref-img">
         <div id="text-layer"></div>
     </div>
 
@@ -147,22 +142,11 @@
         function fillScreen() {
             const layer = document.getElementById('text-layer');
             const text = "iloveyou";
-            // Pinupuno natin ng malupit na amount ng text para mahaba ang scroll
-            layer.innerText = text.repeat(300000); 
+            // Sobra-sobrahan ang text para kahit gaano kahaba ang image, puno siya
+            layer.innerText = text.repeat(250000); 
         }
 
-        // Scroll Progress logic
-        window.onscroll = function() {
-            let winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-            let height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            let scrolled = (winScroll / height) * 100;
-            document.getElementById("progress").style.width = scrolled + "%";
-            
-            // Re-trigger play on scroll kung sakaling ayaw pa rin
-            if (audio.paused) { audio.play(); }
-        };
-
-        // Emergency click
+        // Emergency play trigger
         window.onclick = function() {
             if (document.getElementById('content').style.display === 'block' && audio.paused) {
                 audio.play();
