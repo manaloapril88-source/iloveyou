@@ -1,0 +1,21 @@
+{
+  "name": "youtube-search-api",
+  "version": "1.0.0",
+  "description": "Simple YouTube Search API using YouTube Data API v3",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": ["youtube", "api", "search", "nodejs"],
+  "author": "April",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "googleapis": "^144.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}
