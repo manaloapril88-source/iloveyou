@@ -1,19 +1,18 @@
 {
   "name": "youtube-search-mp3-api",
   "version": "1.0.0",
-  "description": "Simple API for YouTube search and MP3 audio download (streaming) using official YouTube Data API and yt-dlp wrapper",
+  "description": "YouTube Search API + MP3 Audio Downloader (streaming) using YouTube Data API v3 and ytdlp-nodejs",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon index.js"
   },
   "keywords": [
     "youtube",
-    "api",
     "search",
     "mp3",
     "downloader",
+    "api",
     "nodejs",
     "express",
     "yt-dlp"
