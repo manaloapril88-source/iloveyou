@@ -2,11 +2,12 @@ const express = require('express');
 const { google } = require('googleapis');
 const cors = require('cors');
 const { YtDlp } = require('ytdlp-nodejs');
+const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Your YouTube Data API Key (mas maganda sa .env later!)
+// Your YouTube Data API Key (ilagay sa .env later para secure)
 const API_KEY = 'AIzaSyBwc-TtchkgQzTWu2ubd3IkPCvcIgwdIgU';
 
 // Initialize YouTube API
@@ -16,7 +17,10 @@ const youtube = google.youtube({
 });
 
 // Initialize ytdlp-nodejs
-const ytdlp = new YtDlp(); // Auto-handles yt-dlp binary & FFmpeg if available
+const ytdlp = new YtDlp(); // Auto-handles binary & updates
+
+// Cookies file path (same folder ng index.js)
+const COOKIES_PATH = path.join(__dirname, 'cookies.txt');
 
 app.use(cors());
 app.use(express.json());
@@ -38,7 +42,6 @@ app.get('/yt/search', async (req, res) => {
       maxResults,
       type: 'video',
       order: 'relevance',
-      // regionCode: 'PH', // Uncomment para PH-focused
     });
 
     const videos = response.data.items.map(item => ({
@@ -49,9 +52,7 @@ app.get('/yt/search', async (req, res) => {
       description: item.snippet.description,
       videoId: item.id.videoId,
       url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-      thumbnail: item.snippet.thumbnails?.medium?.url ||
-                 item.snippet.thumbnails?.high?.url ||
-                 item.snippet.thumbnails?.default?.url || '',
+      thumbnail: item.snippet.thumbnails?.medium?.url || '',
       channelTitle: item.snippet.channelTitle,
       publishedAt: item.snippet.publishedAt,
     }));
@@ -61,16 +62,14 @@ app.get('/yt/search', async (req, res) => {
       query: q,
       count: videos.length,
       results: videos,
-      totalApprox: response.data.pageInfo?.totalResults,
-      nextPageToken: response.data.nextPageToken,
     });
   } catch (error) {
-    console.error('Search Error:', error?.response?.data || error.message);
-    res.status(500).json({ error: 'Error sa YouTube search', details: error?.message });
+    console.error('Search Error:', error?.message);
+    res.status(500).json({ error: 'Search failed', details: error?.message });
   }
 });
 
-// Endpoint 2: Download MP3 (actual audio download/stream)
+// Endpoint 2: Download MP3 (with cookies for bot bypass)
 app.get('/yt/mp3', async (req, res) => {
   const { url } = req.query;
 
@@ -79,35 +78,34 @@ app.get('/yt/mp3', async (req, res) => {
   }
 
   try {
-    // Get video info for filename
+    // Get info for filename
     const info = await ytdlp.getInfoAsync(url);
     let title = (info.title || 'youtube_audio')
       .replace(/[^a-zA-Z0-9\s-]/g, '_')
       .trim();
     const fileName = `${title}.mp3`;
 
-    // Set download headers
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'no-cache');
 
-    console.log(`Starting MP3 download: ${title} (${url})`);
+    console.log(`Downloading MP3: ${title} from ${url} (using cookies)`);
 
-    // Download audio as MP3 and stream directly to response
-    await ytdlp.downloadAudio(url, 'mp3', {
-      onProgress: (progress) => {
+    // Use cookies file + stream to response
+    await ytdlp
+      .downloadAudio(url, 'mp3')
+      .cookies(COOKIES_PATH)  // <-- Key: gamit cookies mo!
+      .on('progress', (progress) => {
         console.log(`Progress: ${progress.percentage_str || progress.percent}% | Speed: ${progress.speed || 'N/A'}`);
-      },
-      // Extra options if needed: quality, etc.
-      // quality: 'best', // or specific like '0' for best VBR
-    }, res); // Pipe to res (streams direct, no disk save)
+      })
+      .run(res);  // Pipe/stream direct sa response
 
   } catch (error) {
-    console.error('MP3 Download Error:', error);
+    console.error('MP3 Download Error:', error?.message || error);
     if (!res.headersSent) {
       res.status(500).json({
         error: 'Hindi ma-download ang MP3',
-        details: error.message || 'Check FFmpeg, internet, or try shorter video. Baka kailangan i-update yt-dlp binary (auto-try ng library).',
+        details: error?.message || 'Check cookies.txt validity, FFmpeg install, or video restrictions.',
       });
     } else {
       res.end();
@@ -119,17 +117,13 @@ app.get('/yt/mp3', async (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     status: 'running',
-    message: 'YT Search + MP3 Downloader API Ready!',
-    endpoints: [
-      'GET /yt/search?q=hiling&max=5',
-      'GET /yt/mp3?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    ],
-    note: 'MP3 requires FFmpeg installed. First run may download yt-dlp binary.',
+    message: 'YT API Ready! Use /yt/search or /yt/mp3',
+    note: 'MP3 uses cookies.txt for YouTube bot bypass. Ensure FFmpeg is installed.',
   });
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Server running sa http://localhost:${port}`);
-  console.log(`   Search: http://localhost:${port}/yt/search?q=hiling`);
-  console.log(`   MP3:    http://localhost:${port}/yt/mp3?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ`);
+  console.log(`Server running sa http://localhost:${port}`);
+  console.log(`Test search: http://localhost:${port}/yt/search?q=hiling`);
+  console.log(`Test MP3: http://localhost:${port}/yt/mp3?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ`);
 });
