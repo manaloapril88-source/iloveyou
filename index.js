@@ -1,129 +1,90 @@
 const express = require('express');
-const { google } = require('googleapis');
 const cors = require('cors');
-const { YtDlp } = require('ytdlp-nodejs');
-const path = require('path');
+const ytdl = require('ytdl-core');
+const ffmpeg = require('fluent-ffmpeg');
+const fetch = require('node-fetch');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Your YouTube Data API Key (ilagay sa .env later para secure)
-const API_KEY = 'AIzaSyBwc-TtchkgQzTWu2ubd3IkPCvcIgwdIgU';
-
-// Initialize YouTube API
-const youtube = google.youtube({
-  version: 'v3',
-  auth: API_KEY,
-});
-
-// Initialize ytdlp-nodejs
-const ytdlp = new YtDlp(); // Auto-handles binary & updates
-
-// Cookies file path (same folder ng index.js)
-const COOKIES_PATH = path.join(__dirname, 'cookies.txt');
-
 app.use(cors());
 app.use(express.json());
 
-// Endpoint 1: YouTube Search
-app.get('/yt/search', async (req, res) => {
-  const { q, max = 10 } = req.query;
+// Main endpoint: /ytmp3?link=https://youtube.com/watch?v=...
+app.get('/ytmp3', async (req, res) => {
+  const { link } = req.query;
 
-  if (!q) {
-    return res.status(400).json({ error: 'Missing search query. Add ?q=your search term' });
+  if (!link || (!link.includes('youtube.com') && !link.includes('youtu.be'))) {
+    return res.status(400).json({ success: false, error: 'Add valid ?link=YouTube URL' });
   }
 
-  const maxResults = Math.min(Math.max(1, parseInt(max, 10)), 50);
-
   try {
-    const response = await youtube.search.list({
-      part: 'id,snippet',
-      q: q.trim(),
-      maxResults,
-      type: 'video',
-      order: 'relevance',
+    // Get video info
+    const info = await ytdl.getInfo(link);
+    const videoDetails = info.videoDetails;
+
+    const title = videoDetails.title || 'Unknown Title';
+    const thumbnail = videoDetails.thumbnails?.[videoDetails.thumbnails.length - 1]?.url || 'https://i.ytimg.com/vi/default.jpg';
+    const duration = parseFloat(videoDetails.lengthSeconds) || 0;
+
+    // Estimate size (approx, since stream)
+    const approxSize = Math.round(duration * 16000); // rough 160kbps estimate in bytes
+
+    // Stream audio
+    const audioStream = ytdl(link, {
+      filter: 'audioonly',
+      quality: 'highestaudio',
+      requestOptions: { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }
     });
 
-    const videos = response.data.items.map(item => ({
-      title: item.snippet.title
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'"),
-      description: item.snippet.description,
-      videoId: item.id.videoId,
-      url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-      thumbnail: item.snippet.thumbnails?.medium?.url || '',
-      channelTitle: item.snippet.channelTitle,
-      publishedAt: item.snippet.publishedAt,
-    }));
+    // Set response headers for direct download
+    const safeTitle = title.replace(/[^a-zA-Z0-9]/g, '_');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}.mp3"`);
+    res.setHeader('Content-Type', 'audio/mpeg');
 
+    // Convert to MP3 and pipe to response
+    ffmpeg(audioStream)
+      .audioBitrate(192)
+      .format('mp3')
+      .on('error', (err) => {
+        console.error('FFmpeg error:', err.message);
+        if (!res.headersSent) res.status(500).json({ success: false, error: 'Conversion failed' });
+      })
+      .pipe(res, { end: true });
+
+    // Optional: Log or return JSON first if you want Ferdev-like response (but for direct download, stream is better)
+    // If you want JSON response like Ferdev, uncomment below and comment stream part
+    /*
     res.json({
       success: true,
-      query: q,
-      count: videos.length,
-      results: videos,
+      status: 200,
+      author: "April",
+      data: {
+        title,
+        thumbnail,
+        size: approxSize,
+        duration,
+        dlink: `${req.protocol}://${req.get('host')}/ytmp3?link=${encodeURIComponent(link)}` // self-link or external if hosted
+      }
     });
+    */
+
   } catch (error) {
-    console.error('Search Error:', error?.message);
-    res.status(500).json({ error: 'Search failed', details: error?.message });
+    console.error('Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Hindi ma-download',
+      details: error.message.includes('bot') ? 'YouTube detection - try different video' : error.message
+    });
   }
 });
 
-// Endpoint 2: Download MP3 (with cookies for bot bypass)
-app.get('/yt/mp3', async (req, res) => {
-  const { url } = req.query;
-
-  if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
-    return res.status(400).json({ error: 'Add valid YouTube URL: ?url=https://youtube.com/watch?v=...' });
-  }
-
-  try {
-    // Get info for filename
-    const info = await ytdlp.getInfoAsync(url);
-    let title = (info.title || 'youtube_audio')
-      .replace(/[^a-zA-Z0-9\s-]/g, '_')
-      .trim();
-    const fileName = `${title}.mp3`;
-
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Cache-Control', 'no-cache');
-
-    console.log(`Downloading MP3: ${title} from ${url} (using cookies)`);
-
-    // Use cookies file + stream to response
-    await ytdlp
-      .downloadAudio(url, 'mp3')
-      .cookies(COOKIES_PATH)  // <-- Key: gamit cookies mo!
-      .on('progress', (progress) => {
-        console.log(`Progress: ${progress.percentage_str || progress.percent}% | Speed: ${progress.speed || 'N/A'}`);
-      })
-      .run(res);  // Pipe/stream direct sa response
-
-  } catch (error) {
-    console.error('MP3 Download Error:', error?.message || error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        error: 'Hindi ma-download ang MP3',
-        details: error?.message || 'Check cookies.txt validity, FFmpeg install, or video restrictions.',
-      });
-    } else {
-      res.end();
-    }
-  }
-});
-
-// Home route
+// Home
 app.get('/', (req, res) => {
-  res.json({
-    status: 'running',
-    message: 'YT API Ready! Use /yt/search or /yt/mp3',
-    note: 'MP3 uses cookies.txt for YouTube bot bypass. Ensure FFmpeg is installed.',
-  });
+  res.json({ message: 'Sarili mong YTMP3 API running! Use /ytmp3?link=YOUTUBE_URL' });
 });
 
 app.listen(port, () => {
-  console.log(`Server running sa http://localhost:${port}`);
-  console.log(`Test search: http://localhost:${port}/yt/search?q=hiling`);
-  console.log(`Test MP3: http://localhost:${port}/yt/mp3?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ`);
+  console.log(`My YTMP3 API running sa http://localhost:${port}`);
+  console.log(`Example: http://localhost:${port}/ytmp3?link=https://www.youtube.com/watch?v=BRyl0EgUj9g`);
 });
