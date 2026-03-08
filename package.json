@@ -1,7 +1,7 @@
 {
   "name": "youtube-search-mp3-api",
   "version": "1.0.0",
-  "description": "YouTube Search API + MP3 Audio Downloader (streaming) using YouTube Data API v3 and ytdlp-nodejs",
+  "description": "YouTube Search + MP3 Downloader API (with cookies support for bot bypass)",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -14,8 +14,8 @@
     "downloader",
     "api",
     "nodejs",
-    "express",
-    "yt-dlp"
+    "yt-dlp",
+    "cookies"
   ],
   "author": "April",
   "license": "ISC",
